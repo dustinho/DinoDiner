@@ -43,7 +43,7 @@ def render(lines):
             color = int(n(0))
             dotted = False
         elif op == "setDitherPattern":
-            dotted = True
+            dotted = float(a[0])        # share of pixels drawn (black ink)
         elif op == "setLineWidth":
             width = int(n(0))
         elif op == "setImageDrawMode":
@@ -54,13 +54,14 @@ def render(lines):
             d.rounded_rectangle([n(0), n(1), n(0) + n(2) - 1, n(1) + n(3) - 1], n(4), fill=c)
         elif op == "drawRoundRect":
             box = [n(0), n(1), n(0) + n(2) - 1, n(1) + n(3) - 1]
-            if dotted:   # 50% dither: draw on a scratch layer, keep every other pixel
+            if dotted:   # dither: draw on a scratch layer, keep a share of the pixels
                 layer = Image.new("L", screen.size, 0)
                 ImageDraw.Draw(layer).rounded_rectangle(box, n(4), outline=255, width=width)
                 px, lp = screen.load(), layer.load()
                 for yy in range(max(0, int(box[1])), min(240, int(box[3]) + 1)):
                     for xx in range(max(0, int(box[0])), min(400, int(box[2]) + 1)):
-                        if lp[xx, yy] and (xx + yy) % 2 == 0:
+                        keep = (xx + yy) % 2 == 0 if dotted > 0.3 else (xx % 2 == 0 and yy % 2 == 0)
+                        if lp[xx, yy] and keep:
                             px[xx, yy] = c
             else:
                 d.rounded_rectangle(box, n(4), outline=c, width=width)

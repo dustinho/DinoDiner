@@ -36,6 +36,7 @@ Simulator.
 |---|---|---|
 | 13 | Party dinos' heads touched or overlapped the left edge of their row box (the sprite ended exactly where the box began), worst while hopping. | Cells are 32 px apart instead of 34 (berries are 30), so the grid could shift right. There's now a fixed 5 px gap between each dino and its row, still close enough to read as "my row". A test enforces the gap and checks that a 5-wide row still fits on screen. |
 | 14 | The berry inset inside a cell was hard-coded. | Derived from the cell pitch, so the grid can be retuned in one place. |
+| 15 | The tray looked heavy. 2–3 px solid box outlines and 50% dotted cells competed with the strawberries. | Tray and row boxes keep their white fill (so the berries stand out from the jungle) but have just a thin dotted edge. Empty cells are faint 25% dots. The strawberries are now the boldest thing on the tray. Check on hardware that the 25% cell dots are still visible on the reflective screen. |
 
 ### Still open
 

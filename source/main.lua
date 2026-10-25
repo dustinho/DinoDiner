@@ -188,14 +188,17 @@ end
 ---------------------------------------------------------------- grid
 local POP_OFFSET <const> = { -7, -5, -3, -1 }
 
--- Dotted outline of one grid cell (inset so neighbours don't share edges).
+-- Faint outline of one grid cell (25% dots, inset so neighbours don't
+-- share edges): enough to show the empty slots without competing with
+-- the strawberries.
 local function drawCell(x, y, w, h)
     gfx.setColor(gfx.kColorBlack)
-    gfx.setDitherPattern(0.5, gfx.image.kDitherTypeBayer2x2)
+    gfx.setDitherPattern(0.25, gfx.image.kDitherTypeBayer4x4)
     gfx.drawRoundRect(x + 1, y + 1, w - 2, h - 2, 5)
     gfx.setColor(gfx.kColorBlack)
 end
 
+-- White panel with a solid outline (title-screen selector).
 local function drawMat(x, y, w, h, lineWidth)
     gfx.setColor(gfx.kColorWhite)
     gfx.fillRoundRect(x, y, w, h, 8)
@@ -205,19 +208,30 @@ local function drawMat(x, y, w, h, lineWidth)
     gfx.setLineWidth(1)
 end
 
+-- Light tray: white so the berries pop off the jungle, with just a thin
+-- dotted edge.
+local function drawLightMat(x, y, w, h)
+    gfx.setColor(gfx.kColorWhite)
+    gfx.fillRoundRect(x, y, w, h, 8)
+    gfx.setColor(gfx.kColorBlack)
+    gfx.setDitherPattern(0.5, gfx.image.kDitherTypeBayer2x2)
+    gfx.drawRoundRect(x, y, w, h, 8)
+    gfx.setColor(gfx.kColorBlack)
+end
+
 -- Grid tray: counting shows a 2x5 grid; multiplying one row per dino,
 -- as many cells wide as each dino wants.
 local function drawTray(g)
     local L = g:layout().grid
     if g.mode == "count" then
-        drawMat(L.x - 6, L.y - 6, 5 * L.dx + 12, 2 * L.dy + 12, 3)
+        drawLightMat(L.x - 6, L.y - 6, 5 * L.dx + 12, 2 * L.dy + 12)
         for r = 0, 1 do
             for c = 0, 4 do drawCell(L.x + c * L.dx, L.y + r * L.dy, L.dx, L.dy - 1) end
         end
     else
         for r = 1, g.groups do
             local y = L.y + (r - 1) * L.dy
-            drawMat(L.x - 3, y - 1, g.each * L.dx + 6, L.dy, 2)
+            drawLightMat(L.x - 3, y - 1, g.each * L.dx + 6, L.dy)
             for c = 0, g.each - 1 do drawCell(L.x + c * L.dx, y, L.dx, L.dy) end
         end
     end

@@ -49,7 +49,7 @@ Image.__index = Image
 function Image:draw(x, y) rec("image", self.path, x, y) end
 function Image:getSize() return self.width, self.height end
 
-gfx.image = { kDitherTypeBayer2x2 = "bayer2x2" }
+gfx.image = { kDitherTypeBayer2x2 = "bayer2x2", kDitherTypeBayer4x4 = "bayer4x4" }
 function gfx.image.new(path)
     M.images = M.images or {}
     M.images[path] = true
