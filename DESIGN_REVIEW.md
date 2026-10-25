@@ -30,6 +30,13 @@ Simulator.
 | 11 | Two-digit totals ("10", "25") overflowed the badge. | Badge widened to 92 px. A test checks both badges stay on screen and clear of the bubble. |
 | 12 | Request, prompt and total were in different places in each game. | Same top row in both games: request bubble top-left (tail down to the T-Rex), crank/A prompt in the middle, total badge top-right. A test checks the order. |
 
+### UX pass: dinos vs. row boxes
+
+| # | Finding | Fix |
+|---|---|---|
+| 13 | Party dinos' heads touched or overlapped the left edge of their row box (the sprite ended exactly where the box began), worst while hopping. | Cells are 32 px apart instead of 34 (berries are 30), so the grid could shift right. There's now a fixed 5 px gap between each dino and its row, still close enough to read as "my row". A test enforces the gap and checks that a 5-wide row still fits on screen. |
+| 14 | The berry inset inside a cell was hard-coded. | Derived from the cell pitch, so the grid can be retuned in one place. |
+
 ### Still open
 
 - **Big T-Rex vs. grid in Multiplying:** the host takes the left 40% of

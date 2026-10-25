@@ -189,10 +189,10 @@ end
 local POP_OFFSET <const> = { -7, -5, -3, -1 }
 
 -- Dotted outline of one grid cell (inset so neighbours don't share edges).
-local function drawCell(x, y)
+local function drawCell(x, y, w, h)
     gfx.setColor(gfx.kColorBlack)
     gfx.setDitherPattern(0.5, gfx.image.kDitherTypeBayer2x2)
-    gfx.drawRoundRect(x + 1, y + 1, 32, 33, 5)
+    gfx.drawRoundRect(x + 1, y + 1, w - 2, h - 2, 5)
     gfx.setColor(gfx.kColorBlack)
 end
 
@@ -212,13 +212,13 @@ local function drawTray(g)
     if g.mode == "count" then
         drawMat(L.x - 6, L.y - 6, 5 * L.dx + 12, 2 * L.dy + 12, 3)
         for r = 0, 1 do
-            for c = 0, 4 do drawCell(L.x + c * L.dx, L.y + r * L.dy) end
+            for c = 0, 4 do drawCell(L.x + c * L.dx, L.y + r * L.dy, L.dx, L.dy - 1) end
         end
     else
         for r = 1, g.groups do
             local y = L.y + (r - 1) * L.dy
             drawMat(L.x - 3, y - 1, g.each * L.dx + 6, L.dy, 2)
-            for c = 0, g.each - 1 do drawCell(L.x + c * L.dx, y) end
+            for c = 0, g.each - 1 do drawCell(L.x + c * L.dx, y, L.dx, L.dy) end
         end
     end
 end

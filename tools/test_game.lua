@@ -403,7 +403,7 @@ test("multiplying: berries fill row by row, one row per dino", function()
     for i = 1, 12 do
         local x, y = g:cellPos(i)
         eq(y, L.y + ((i - 1) // 4) * L.dy + 2, "row of berry " .. i)
-        eq(x, L.x + ((i - 1) % 4) * L.dx + 2, "column of berry " .. i)
+        eq(x, L.x + ((i - 1) % 4) * L.dx + (L.dx - 30) // 2, "column of berry " .. i)
     end
     step(g, { ticks = 4 })
     run(g, 20)
@@ -507,10 +507,13 @@ test("multiplying layout: 5x5 grid, extra row and dinos fit on screen", function
         local x, y = g:cellPos(i)
         check(x >= 0 and x + 30 <= 400 and y >= 0 and y + 32 <= 240, "berry " .. i)
     end
+    local L = Layout.multiply.grid
+    check(L.x - 3 + 5 * L.dx + 6 <= 400, "widest row box fits on screen")
     g.state = "feeding"
     for r = 1, 4 do
         local x, y = g:portraitPos(r)
-        check(x >= 0 and x + 48 <= Layout.multiply.grid.x - 2 and y + 40 <= 240, "dino " .. r)
+        -- row box starts at grid.x - 3; keep a visible gap so heads never touch it
+        check(x >= 0 and x + 48 + 4 <= Layout.multiply.grid.x - 3 and y + 40 <= 240, "dino " .. r)
         local mx, my = g:mouthPos(r)
         check(mx > x and my > y, "mouth inside sprite " .. r)
     end

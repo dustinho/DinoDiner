@@ -66,8 +66,8 @@ Layout = {
         bubble = { x = 6, y = 6, w = 176, h = 46, tip = { 118, 86 } },
         total = { x = 300, y = 6, w = 92, h = 44 },
         prompt = { x = 241, y = 30 },
-        grid = { x = 226, y = 64, dx = 34, dy = 35 },
-        portraitX = 175,
+        grid = { x = 234, y = 64, dx = 32, dy = 35 },
+        portraitX = 178,        -- 48 px dino + 5 px gap before its row box
     },
     -- mouth position inside each 48x40 friend sprite (printed by
     -- tools/make_friends.py)
@@ -160,7 +160,8 @@ function Game:cellPos(i)
     local L = self:layout().grid
     local cols = self.mode == "count" and L.cols or self.each
     local row, col = (i - 1) // cols, (i - 1) % cols
-    return L.x + col * L.dx + 2, L.y + row * L.dy + 2
+    local inset = (L.dx - Layout.berrySize.w) // 2
+    return L.x + col * L.dx + inset, L.y + row * L.dy + 2
 end
 
 -- Where berries for row r (multiplying) or the T-Rex (counting) go.
