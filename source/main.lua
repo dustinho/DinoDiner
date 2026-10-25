@@ -26,8 +26,6 @@ local img = {
     bowl = loadImage("images/bowl_empty"),
     bowlFront = loadImage("images/bowl_front"),
     berry = loadImage("images/strawberry"),
-    berrySmall = loadImage("images/strawberry_small"),
-    berryOutline = loadImage("images/strawberry_outline"),
     heart = loadImage("images/heart"),
     heartBig = loadImage("images/heart_big"),
     trex = {},
@@ -98,27 +96,34 @@ local function drawCrankIcon(cx, cy, frame, dir)
     gfx.setLineWidth(1)
 end
 
-local function drawBubble(contentImg, number)
+-- Speech bubble with an icon and the big numeral.  `invert` flips it to
+-- black with a white numeral: the "look at the number" blink after a
+-- "need more" answer.
+local function drawBubble(contentImg, number, invert)
     local b = Layout.bubble
-    gfx.setColor(gfx.kColorWhite)
-    gfx.fillRoundRect(b.x, b.y, b.w, b.h, 8)
-    gfx.fillTriangle(b.x + 14, b.y + b.h - 3, b.x + 34, b.y + b.h - 3, b.x - 6, b.y + b.h + 16)
+    local tipX, tipY = b.x + 6, b.y + b.h + 18
+    local fill = invert and gfx.kColorBlack or gfx.kColorWhite
+    gfx.setColor(fill)
+    gfx.fillRoundRect(b.x, b.y, b.w, b.h, 10)
+    gfx.fillTriangle(b.x + 16, b.y + b.h - 3, b.x + 38, b.y + b.h - 3, tipX, tipY)
     gfx.setColor(gfx.kColorBlack)
     gfx.setLineWidth(3)
-    gfx.drawRoundRect(b.x, b.y, b.w, b.h, 8)
-    gfx.setColor(gfx.kColorWhite)
-    gfx.fillRect(b.x + 16, b.y + b.h - 3, 17, 4)
+    gfx.drawRoundRect(b.x, b.y, b.w, b.h, 10)
+    gfx.setColor(fill)
+    gfx.fillRect(b.x + 18, b.y + b.h - 3, 19, 4)
     gfx.setColor(gfx.kColorBlack)
-    gfx.drawLine(b.x + 14, b.y + b.h - 1, b.x - 6, b.y + b.h + 16)
-    gfx.drawLine(b.x + 34, b.y + b.h - 1, b.x - 6, b.y + b.h + 16)
+    gfx.drawLine(b.x + 16, b.y + b.h - 1, tipX, tipY)
+    gfx.drawLine(b.x + 38, b.y + b.h - 1, tipX, tipY)
     gfx.setLineWidth(1)
     local cw, ch = contentImg:getSize()
-    contentImg:draw(b.x + 14, b.y + (b.h - ch) // 2)
+    contentImg:draw(b.x + 16, b.y + (b.h - ch) // 2)
     if number then
         local n = img.num[number]
         local nw, nh = n:getSize()
-        local left = b.x + 14 + cw
+        local left = b.x + 16 + cw
+        if invert then gfx.setImageDrawMode(gfx.kDrawModeFillWhite) end
         n:draw(left + (b.x + b.w - left - nw) // 2, b.y + (b.h - nh) // 2)
+        gfx.setImageDrawMode(gfx.kDrawModeCopy)
     end
 end
 
@@ -133,7 +138,17 @@ local function drawBowl(g)
         if g.state == "play" and popped and g.frame - popped < #POP_OFFSET then
             y = y + POP_OFFSET[g.frame - popped + 1]
         end
-        img.berry:draw(x, y)
+        if i > g.target and g.state == "play" then
+            -- extra berries beyond the request show up dark (and blink
+            -- after a "too many" answer)
+            if not (g.hint == "less" and g:hintBlinkOff()) then
+                gfx.setImageDrawMode(gfx.kDrawModeInverted)
+                img.berry:draw(x, y)
+                gfx.setImageDrawMode(gfx.kDrawModeCopy)
+            end
+        else
+            img.berry:draw(x, y)
+        end
     end
     local _, bh = img.bowl:getSize()
     local _, fh = img.bowlFront:getSize()
@@ -152,26 +167,8 @@ local function drawBowl(g)
     end
 end
 
-local function drawSlots(g)
-    for i = 1, math.max(g.target, g.count) do
-        if not g:slotFlashOff(i) then
-            local x, y = Layout.slotPos(i)
-            if i <= g.count and i > g.target then
-                -- extra berries beyond the request show up dark
-                gfx.setImageDrawMode(gfx.kDrawModeInverted)
-                img.berrySmall:draw(x, y)
-                gfx.setImageDrawMode(gfx.kDrawModeCopy)
-            elseif i <= g.count then
-                img.berrySmall:draw(x, y)
-            else
-                img.berryOutline:draw(x, y)
-            end
-        end
-    end
-end
-
 local function drawPlayHints(g)
-    local cx, cy = 370, 108
+    local cx, cy = Layout.prompt.x, Layout.prompt.y
     if g.state ~= "play" then return end
     if g.count == g.target and g.pending == 0 then
         drawAButton(cx, cy, 12 + (g.frame // 8) % 2)
@@ -203,9 +200,9 @@ local function drawPlay(g)
     if g.state == "celebrate" then
         drawBubble(img.heartBig, g.target)
     else
-        drawBubble(img.berry, g.target)
+        local blink = (g.hint == "more" or g.hint == "empty") and g:hintBlinkOff()
+        drawBubble(img.berry, g.target, blink)
     end
-    if g.state == "play" then drawSlots(g) end
     drawBowl(g)
     drawDino(g)
     local x, y = g:flyingPos()
@@ -213,7 +210,7 @@ local function drawPlay(g)
     if g.state == "celebrate" then
         drawHearts(g)
         if g.celebrateFrames > 15 then
-            drawAButton(372, 104, 12 + (g.frame // 8) % 2)
+            drawAButton(Layout.prompt.x, Layout.prompt.y, 12 + (g.frame // 8) % 2)
         end
     end
     drawPlayHints(g)

@@ -193,81 +193,10 @@ def make_dino(mock):
 
 
 # ---------------------------------------------------------------- strawberries
-# Hand-authored pixel data.  Body rows give the silhouette span (x0, x1)
-# from the first body row down to the point; crowns are drawn on top.
-BIG_BODY = (3, [(5, 18), (3, 20), (2, 21), (1, 22)] + [(0, 23)] * 5 + [(1, 22)] * 2 +
-            [(2, 21)] * 2 + [(3, 20)] + [(4, 19), (5, 18), (6, 17), (7, 16),
-            (8, 15), (9, 14), (10, 13), (11, 12)])
-BIG_CROWN = [
-    "...........##...........",
-    "...........##...........",
-    ".........######.........",
-    "......############......",
-    "....####.######.####....",
-    "...###...#.##.#...###...",
-    "..##....##.##.##....##..",
-    "........#..##..#........",
-    "...........##...........",
-]
-BIG_SEEDS = [(5, 9), (17, 9), (8, 12), (14, 12), (4, 14), (19, 14), (11, 15),
-             (7, 17), (16, 17), (9, 20), (13, 20)]
-
-SMALL_BODY = (1, [(4, 11), (2, 13), (1, 14)] + [(0, 15)] * 4 + [(1, 14)] * 2 +
-              [(2, 13), (3, 12), (4, 11), (5, 10), (6, 9), (7, 8)])
-SMALL_CROWN = [
-    ".......##.......",
-    ".....######.....",
-    "...###.##.###...",
-    "..##..#..#..##..",
-]
-SMALL_SEEDS = [(4, 6), (11, 6), (7, 8), (5, 10), (10, 10), (8, 12)]
-
-
-def berry_masks(body_spec, crown_rows):
-    top, spans = body_spec
-    w = len(crown_rows[0])
-    h = top + len(spans)
-    body = np.zeros((h, w), bool)
-    for i, (x0, x1) in enumerate(spans):
-        body[top + i, x0:x1 + 1] = True
-    crown = np.zeros((h, w), bool)
-    for y, row in enumerate(crown_rows):
-        for x, ch in enumerate(row):
-            crown[y, x] = ch == "#"
-    return body, crown
-
-
-def strawberry(body_spec, crown_rows, seeds, thick):
-    body, crown = berry_masks(body_spec, crown_rows)
-    a = np.full(body.shape, CLEAR)
-    a[body] = BLACK
-    inner = erode(body)
-    if thick:   # 2px outline, except across the top where the leaves sit
-        yy0 = np.indices(body.shape)[0]
-        inner &= erode(inner) | (yy0 < 7)
-    a[inner] = WHITE
-    # dithered shading in a band along the right-hand edge
-    yy, xx = np.indices(body.shape)
-    k = 3 if thick else 2
-    band = inner & ~np.pad(inner, ((0, 0), (0, k)))[:, k:]
-    a[band & ((xx + yy) % 2 == 0)] = BLACK
-    for (x, y) in seeds:
-        a[y, x] = BLACK
-        if thick:
-            a[y + 1, x] = BLACK
-    # leaves get a white rim where they lie on the fruit so they read
-    rim = np.zeros_like(crown)
-    for dy, dx in ((0, 1), (0, -1), (1, 0), (1, 1), (1, -1)):
-        rim |= np.roll(np.roll(crown, dy, 0), dx, 1)
-    a[rim & inner & ~crown] = WHITE
-    a[crown] = BLACK
-    return a
-
-
 def vector_berry(scale=1.0):
     """Strawberry drawn as vector shapes at 8x, then reduced to 1-bit.
 
-    Base design is 30x32; `scale` shrinks it for the goal-slot icons.
+    Base design is 30x32; `scale` shrinks it for smaller icons.
     Returns (sprite, body_mask, crown_mask)."""
     SS = 8
     W, H = round(30 * scale), round(32 * scale)
@@ -332,24 +261,6 @@ def vector_berry(scale=1.0):
             if inner[y, x]:
                 a[y, x] = WHITE
     return a, body, crown
-
-
-def dotted_outline(a):
-    """Dotted silhouette of a sprite: the 'empty slot' goal marker."""
-    body, crown = a
-    edge = body & ~erode(body)
-    ys, xs = np.nonzero(edge)
-    cy, cx = ys.mean(), xs.mean()
-    order = np.argsort(np.arctan2(ys - cy, xs - cx))
-    out = np.full(body.shape, CLEAR)
-    for i, j in enumerate(order):
-        if i % 2 == 0:
-            out[ys[j], xs[j]] = BLACK
-    yy, xx = np.indices(body.shape)
-    cedge = crown & ~erode(crown)
-    out[cedge & ((xx + yy) % 2 == 0)] = BLACK
-    return out
-
 
 
 # ---------------------------------------------------------------- bowl
@@ -433,7 +344,7 @@ def make_play_bg(mock):
 # ---------------------------------------------------------------- numerals
 def make_numbers():
     for n in range(1, 11):
-        m = text_mask(str(n), 46)
+        m = text_mask(str(n), 64)
         a = np.full(m.shape, CLEAR)
         a[m] = BLACK
         save(a, os.path.join(OUT, "numbers", "num_%d.png" % n))
@@ -497,9 +408,6 @@ def main():
     happy = make_dino(mock)
     berry, _, _ = vector_berry(1.0)
     save(berry, os.path.join(OUT, "strawberry.png"))
-    small, sbody, scrown = vector_berry(0.6)
-    save(small, os.path.join(OUT, "strawberry_small.png"))
-    save(dotted_outline((sbody, scrown)), os.path.join(OUT, "strawberry_outline.png"))
     make_bowl(mock)
     title = make_title(mock)
     make_play_bg(mock)

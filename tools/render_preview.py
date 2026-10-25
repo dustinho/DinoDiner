@@ -36,6 +36,8 @@ def render(lines):
             src = im.convert("L")
             if mode == "inverted":
                 src = src.point(lambda v: 255 - v)
+            elif mode == "fillWhite":
+                src = src.point(lambda v: 255)
             screen.paste(src, (int(n(1)), int(n(2))), im.split()[3])
         elif op == "setColor":
             color = int(n(0))

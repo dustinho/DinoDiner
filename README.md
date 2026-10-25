@@ -10,17 +10,18 @@ over. Mistakes get a spoken hint and the child can try again.
 ## How to play
 
 1. Press **A** on the title screen. On the first round the dino explains
-   how to play, then asks for a number. The bubble shows a big numeral, and
-   dotted strawberry outlines show how many it wants.
+   how to play, then asks for a number. The speech bubble shows a big
+   numeral next to a strawberry.
 2. Turn the **crank forward** to add strawberries and **backward** to take
-   them out. Each berry pops in by itself with a sound, and fills one of the
-   dotted outlines. Once the crank stops, the voice says the total.
+   them out. Each berry pops into the bowl by itself with a bubbly sound.
+   Once the crank stops, the voice says the total.
 3. When the count matches, the dino gets excited and a pulsing **A** button
    appears. Press **A**. Berries fly into its mouth one at a time while the
    voice counts along. Then it chews and celebrates.
 4. Wrong count? The dino tilts its head with a "?" and says *"I need more"*,
-   *"That's too many"* or *"The bowl is empty"*. The missing or extra berries
-   flash, and extra berries are drawn dark.
+   *"That's too many"* or *"The bowl is empty"*. For too few, the bubble
+   blinks to draw the eye back to the number. Extra berries beyond the
+   request are drawn dark in the bowl, and blink after a "too many" answer.
 5. After the celebration, press **A** for the next round. The game never
    moves on by itself.
 
@@ -76,7 +77,7 @@ tools/
   render_preview.py renders recorded draw calls to PNG previews
   check_assets.py   checks every asset main.lua loads (1-bit, sizes, WAV format)
   make_art.py       regenerates all art from tools/reference/mockup.png
-  make_sounds.py    regenerates speech (espeak-ng) and effects
+  make_sounds.py    regenerates speech (Kokoro TTS) and effects
   reference/        art-direction mockup
 preview/            rendered screens (from the mock, not the Simulator)
 ```
@@ -111,11 +112,19 @@ The tests cover:
   `tools/reference/` and converted to 1-bit pixels at native resolution.
   Blink and chomp reuse the idle and excited bodies with the eyes closed, so
   the frames line up without jitter.
-- **Strawberries** (30×32 in the bowl, 18×19 for goal slots, plus a dotted
-  outline), **hearts** and **numerals** are drawn by `make_art.py`.
-- **Speech** is synthesized with espeak-ng. To use a real voice, record files
-  with the same names (`request_N`, `count_N`, `hint_*`, `yum_*`, …) as
-  mono WAVs.
+- **Strawberries** (30×32), **hearts** and **numerals** are drawn by
+  `make_art.py`.
+- **Speech** uses the Kokoro-82M neural TTS model (Apache-2.0) with the warm
+  `af_heart` voice, pitched up slightly so the dino sounds young. The model
+  is fetched once from the npm registry into `tools/.cache/` (git-ignored).
+  To use a real voice, record files with the same names (`request_N`,
+  `count_N`, `hint_*`, `yum_*`, …) as mono WAVs.
+- **Effects** are soft synthesized sounds: a bubbly "bloop" for each berry,
+  a gentle "boop" for removing one, a soft "nom" for each bite, and a marimba
+  arpeggio for the celebration. Every clip fades in and out, so nothing
+  clicks.
+
+See [DESIGN_REVIEW.md](DESIGN_REVIEW.md) for the latest design review.
 
 ## Verification status
 

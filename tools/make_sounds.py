@@ -1,112 +1,198 @@
 #!/usr/bin/env python3
-"""Generate Dino Diner's speech (espeak-ng) and sound effects.
+"""Generate Dino Diner's speech and sound effects.
+
+Speech uses the Kokoro-82M neural TTS model (Apache-2.0) with the warm
+"af_heart" voice, lifted slightly in pitch so the dino sounds young and
+friendly.  Effects are soft, rounded synth sounds (no harsh buzzers).
 
 Output: 16-bit mono PCM WAV, 22050 Hz, in source/sounds/.
-Replace any file with a real voice recording of the same name to upgrade.
-Usage:  python3 tools/make_sounds.py   (needs espeak-ng, ffmpeg, numpy)
+Replace any file with a real recording of the same name to upgrade.
+
+Usage:  pip install kokoro-onnx soundfile numpy
+        python3 tools/make_sounds.py
+The model and voice files (~120 MB) are fetched once from the npm registry
+(packages kokoro-q8-shards and kokoro-js) into tools/.cache/.
 """
+import glob
+import hashlib
+import io
 import os
 import subprocess
-import tempfile
+import tarfile
+import urllib.request
 import wave
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "source", "sounds")
+CACHE = os.path.join(ROOT, "tools", ".cache")
 RATE = 22050
+VOICE = "af_heart"
+PITCH = 1.10        # gentle lift: younger and brighter, not chipmunk
+MODEL_SHA = "fbae9257e1e05ffc727e951ef9b9c98418e6d79f1c9b6b13bd59f5c9028a1478"
+
 WORDS = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
 
 SPEECH = {
     "title": "Dino Diner! Press A to play!",
-    "instructions": "Hi! I'm a hungry dino. Turn the crank to put strawberries in the bowl. "
-                    "Then press A to feed me!",
-    "hint_empty": "The bowl is empty. Turn the crank to add strawberries!",
-    "hint_more": "Hmm, I need more. Turn the crank forward to add some!",
-    "hint_less": "Oops, that's too many! Turn the crank back to take some out.",
+    "instructions": "Hi there! I'm a hungry little dino. "
+                    "Turn the crank to put strawberries in my bowl. Then press A to feed me!",
+    "hint_empty": "My bowl is empty! Turn the crank to add some strawberries.",
+    "hint_more": "Ooh, I need a few more! Turn the crank to add some.",
+    "hint_less": "Oopsie, that's too many! Turn the crank back to take some out.",
     "hint_ready": "That's just right! Press A to feed me!",
     "yum_1": "Yum yum yum! Thank you!",
-    "yum_2": "Delicious! You counted perfectly!",
-    "yum_3": "Mmm, so tasty! Thank you, friend!",
+    "yum_2": "Mmm, delicious! You counted perfectly!",
+    "yum_3": "Yummy! Thank you, friend!",
     "again": "Press A to play again!",
 }
 for i, w in enumerate(WORDS, 1):
-    SPEECH["count_%d" % i] = w + "!"
+    SPEECH["count_%d" % i] = w.capitalize() + "!"
     SPEECH["request_%d" % i] = "Can I have %s %s, please?" % (
         w, "strawberry" if i == 1 else "strawberries")
 
 
-def write_wav(path, samples):
-    s = np.clip(samples, -1, 1)
+# ---------------------------------------------------------------- model fetch
+def npm_tarball(pkg, version):
+    url = "https://registry.npmjs.org/%s/-/%s-%s.tgz" % (pkg, pkg, version)
+    data = urllib.request.urlopen(url).read()
+    return tarfile.open(fileobj=io.BytesIO(data))
+
+
+def ensure_model():
+    os.makedirs(CACHE, exist_ok=True)
+    model = os.path.join(CACHE, "kokoro-q8.onnx")
+    voices = os.path.join(CACHE, "voices.npz")
+    if not os.path.exists(model):
+        tar = npm_tarball("kokoro-q8-shards", "1.0.0")
+        parts = [tar.extractfile("package/kokoro-q8.part%d.bin" % i).read() for i in range(6)]
+        blob = b"".join(parts)
+        assert hashlib.sha256(blob).hexdigest() == MODEL_SHA, "model checksum mismatch"
+        open(model, "wb").write(blob)
+    if not os.path.exists(voices):
+        tar = npm_tarball("kokoro-js", "1.2.1")
+        v = {}
+        for m in tar.getmembers():
+            if m.name.startswith("package/voices/") and m.name.endswith(".bin"):
+                raw = tar.extractfile(m).read()
+                v[os.path.basename(m.name)[:-4]] = \
+                    np.frombuffer(raw, dtype=np.float32).reshape(-1, 1, 256)
+        np.savez(voices, **v)
+    return model, voices
+
+
+# ---------------------------------------------------------------- output
+def write_wav(path, samples, peak=0.5):
+    s = np.asarray(samples, dtype=np.float64)
+    m = np.max(np.abs(s)) or 1.0
+    s = s / m * peak
+    fade = min(len(s) // 4, int(0.008 * RATE))   # no clicks at either end
+    if fade:
+        ramp = np.linspace(0, 1, fade)
+        s[:fade] *= ramp
+        s[-fade:] *= ramp[::-1]
     with wave.open(path, "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
         w.setframerate(RATE)
-        w.writeframes((s * 32000).astype("<i2").tobytes())
+        w.writeframes((s * 32767).astype("<i2").tobytes())
 
 
-def speak(name, text):
-    with tempfile.TemporaryDirectory() as tmp:
-        raw = os.path.join(tmp, "raw.wav")
-        subprocess.run(["espeak-ng", "-v", "en-us+f3", "-s", "135", "-p", "62",
-                        "-a", "160", "-w", raw, text], check=True)
-        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", raw,
-                        "-af", "silenceremove=start_periods=1:start_threshold=-45dB,"
-                               "areverse,silenceremove=start_periods=1:start_threshold=-45dB,"
-                               "areverse,loudnorm=I=-16:TP=-2",
-                        "-ac", "1", "-ar", str(RATE), "-sample_fmt", "s16",
-                        os.path.join(OUT, name + ".wav")], check=True)
+def ffmpeg_filter(samples, rate, af):
+    raw = np.asarray(samples, dtype="<f4").tobytes()
+    p = subprocess.run(["ffmpeg", "-loglevel", "error", "-f", "f32le", "-ar", str(rate),
+                        "-ac", "1", "-i", "-", "-af", af, "-ar", str(RATE),
+                        "-f", "f32le", "-"], input=raw, capture_output=True, check=True)
+    return np.frombuffer(p.stdout, dtype="<f4")
 
 
-def env(n, attack=0.005, release=0.06):
-    t = np.arange(n) / RATE
-    a = np.minimum(1, t / attack)
-    r = np.minimum(1, (n / RATE - t) / release)
-    return a * np.clip(r, 0, 1)
+def trim_silence(s, thresh=0.01):
+    idx = np.nonzero(np.abs(s) > thresh * np.max(np.abs(s)))[0]
+    if len(idx) == 0:
+        return s
+    pad = int(0.03 * RATE)
+    return s[max(0, idx[0] - pad): idx[-1] + pad]
 
 
-def tone(f0, f1, dur, wave_fn=np.sin, vol=0.6):
-    n = int(dur * RATE)
-    f = np.linspace(f0, f1, n)
+def speech():
+    from kokoro_onnx import Kokoro
+    model, voices = ensure_model()
+    k = Kokoro(model, voices)
+    for name, text in SPEECH.items():
+        speed = 0.95 if name.startswith(("count_", "request_")) else 1.0
+        s, sr = k.create(text, voice=VOICE, speed=speed, lang="en-us")
+        # pitch up without changing tempo, then soften the top end a touch
+        af = "asetrate=%d,aresample=%d,atempo=%.4f,lowpass=f=7500" % (
+            int(sr * PITCH), sr, 1 / PITCH)
+        out = trim_silence(ffmpeg_filter(s, sr, af))
+        write_wav(os.path.join(OUT, name + ".wav"), out, peak=0.8)
+
+
+# ---------------------------------------------------------------- effects
+def t_axis(dur):
+    return np.arange(int(dur * RATE)) / RATE
+
+
+def bell(freq, dur, decay=8.0):
+    """Soft marimba-ish note: sine + quiet octave, exponential decay."""
+    t = t_axis(dur)
+    tone = np.sin(2 * np.pi * freq * t) + 0.25 * np.sin(2 * np.pi * freq * 2 * t) \
+        + 0.08 * np.sin(2 * np.pi * freq * 3 * t)
+    return tone * np.exp(-t * decay)
+
+
+def glide(f0, f1, dur, decay=10.0):
+    t = t_axis(dur)
+    f = f0 * (f1 / f0) ** (t / dur)          # exponential (musical) sweep
     ph = 2 * np.pi * np.cumsum(f) / RATE
-    return wave_fn(ph) * env(n) * vol
+    return (np.sin(ph) + 0.15 * np.sin(2 * ph)) * np.exp(-t * decay)
+
+
+def soft_noise(dur, cutoff_kernel, decay, seed):
+    rng = np.random.RandomState(seed)
+    n = rng.uniform(-1, 1, int(dur * RATE))
+    n = np.convolve(n, np.hanning(cutoff_kernel), "same")
+    return n * np.exp(-t_axis(dur) * decay)
+
+
+def mix(*parts):
+    n = max(len(p) for _, p in parts)
+    out = np.zeros(n)
+    for start, p in parts:
+        i = int(start * RATE)
+        out[i:i + len(p)] += p[:max(0, n - i)]
+    return out
 
 
 def effects():
-    rng = np.random.RandomState(3)
-    # pop: quick upward blip
-    write_wav(os.path.join(OUT, "pop.wav"), tone(420, 1150, 0.075))
-    # remove: soft downward blip
-    write_wav(os.path.join(OUT, "remove.wav"), tone(700, 260, 0.09, vol=0.45))
-    # chomp: low thump + crunchy noise burst
-    n = int(0.16 * RATE)
-    noise = rng.uniform(-1, 1, n) * np.exp(-np.arange(n) / (0.03 * RATE))
-    thump = tone(160, 60, 0.16, vol=0.8)
-    write_wav(os.path.join(OUT, "chomp.wav"), thump + noise * 0.5)
-    # chew: two soft munches
-    n = int(0.09 * RATE)
-    munch = rng.uniform(-1, 1, n) * np.exp(-np.arange(n) / (0.02 * RATE)) * 0.35 + \
-        tone(120, 90, 0.09, vol=0.4)
-    write_wav(os.path.join(OUT, "chew.wav"),
-              np.concatenate([munch, np.zeros(int(0.07 * RATE)), munch * 0.8]))
-    # cheer: happy major arpeggio
-    notes = [523.25, 659.25, 783.99, 1046.5]
-    sq = lambda ph: np.sign(np.sin(ph)) * 0.5 + np.sin(ph) * 0.5
-    write_wav(os.path.join(OUT, "cheer.wav"),
-              np.concatenate([tone(f, f, 0.09, sq, 0.35) for f in notes] +
-                             [tone(1046.5, 1046.5, 0.25, sq, 0.35)]))
-    # whoosh: for a berry flying to the mouth
-    n = int(0.18 * RATE)
-    w = rng.uniform(-1, 1, n)
-    w = np.convolve(w, np.ones(12) / 12, "same") * np.sin(np.linspace(0, np.pi, n)) * 0.5
-    write_wav(os.path.join(OUT, "whoosh.wav"), w)
-    # bump: gentle "can't go further" thud (0 or 10 reached)
-    write_wav(os.path.join(OUT, "bump.wav"), tone(220, 180, 0.07, vol=0.35))
+    # pop: bubbly upward "bloop" as a berry lands in the bowl
+    write_wav(os.path.join(OUT, "pop.wav"),
+              mix((0, glide(520, 1040, 0.11, 18)), (0.03, bell(1568, 0.12, 30) * 0.25)), 0.45)
+    # remove: gentle downward "boop"
+    write_wav(os.path.join(OUT, "remove.wav"), glide(700, 380, 0.13, 16), 0.4)
+    # chomp: soft cartoon "nom" - a warm low blip with a little crunch
+    write_wav(os.path.join(OUT, "chomp.wav"),
+              mix((0, glide(330, 220, 0.12, 14)), (0, soft_noise(0.08, 24, 40, 1) * 0.5)), 0.45)
+    # chew: two quiet munches
+    munch = mix((0, glide(260, 200, 0.07, 30)), (0, soft_noise(0.06, 30, 50, 2) * 0.6))
+    write_wav(os.path.join(OUT, "chew.wav"), mix((0, munch), (0.13, munch * 0.8)), 0.3)
+    # cheer: happy marimba arpeggio up to a sparkly top note
+    notes = [(0.0, 523.25), (0.09, 659.25), (0.18, 783.99), (0.27, 1046.5)]
+    parts = [(t, bell(f, 0.5, 7)) for t, f in notes]
+    parts += [(0.36, bell(1318.5, 0.7, 5) * 0.6), (0.36, bell(1568.0, 0.7, 5) * 0.4)]
+    write_wav(os.path.join(OUT, "cheer.wav"), mix(*parts), 0.5)
+    # whoosh: airy swish for a berry flying to the mouth
+    n = soft_noise(0.2, 40, 0, 3) * np.sin(np.linspace(0, np.pi, int(0.2 * RATE))) ** 2
+    write_wav(os.path.join(OUT, "whoosh.wav"), n, 0.18)
+    # bump: soft wooden "tok" when the bowl is already full / empty
+    write_wav(os.path.join(OUT, "bump.wav"), bell(392, 0.12, 35), 0.3)
 
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    for name, text in SPEECH.items():
-        speak(name, text)
+    for f in glob.glob(os.path.join(OUT, "*.wav")):
+        os.remove(f)
+    speech()
     effects()
     print("wrote", len(os.listdir(OUT)), "sounds")
 

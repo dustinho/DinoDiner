@@ -34,13 +34,13 @@ Layout = {
     mouth = { x = 136, y = 152 },       -- where berries disappear
     bowl = { x = 194, y = 160 },
     bowlCenter = { x = 283, y = 178 },
-    bubble = { x = 194, y = 6, w = 140, h = 70 },
-    slots = { x = 214, y = 84, pitch = 20, rowPitch = 21 },
+    bubble = { x = 196, y = 10, w = 164, h = 92 },
+    prompt = { x = 283, y = 124 },      -- crank / A-button nudge icon
     berrySize = { w = 30, h = 32 },
 }
 
 -- Top-left corner of berry i (1..10) inside the bowl.  1-5 sit in the
--- back row, 6-10 in a staggered front row, matching the goal slot grid.
+-- back row, 6-10 in a staggered front row.
 local BACK_DX = { -59, -33, -7, 19, 45 }
 local FRONT_DX = { -45, -19, 7, 33, 59 }
 function Layout.berryPos(i)
@@ -50,14 +50,6 @@ function Layout.berryPos(i)
         return c.x + BACK_DX[i] - w // 2, 143
     end
     return c.x + FRONT_DX[i - 5] - w // 2, 158
-end
-
--- Top-left corner of goal slot i (rows of five, like the bowl).
-function Layout.slotPos(i)
-    local s = Layout.slots
-    local row = (i - 1) // 5
-    local col = (i - 1) % 5
-    return s.x + col * s.pitch, s.y + row * s.rowPitch
 end
 
 function Game.new(audio, random)
@@ -372,13 +364,9 @@ function Game:pose()
     return "idle"
 end
 
--- Should goal slot i be hidden this frame (gentle flashing hint)?
-function Game:slotFlashOff(i)
-    if self.curious <= 0 or (self.frame // 6) % 2 == 0 then return false end
-    if self.hint == "more" or self.hint == "empty" then
-        return i > self.count and i <= self.target
-    elseif self.hint == "less" then
-        return i > self.target and i <= self.count
-    end
-    return false
+-- Gentle blinking after a wrong answer: true on the "off" half of a blink.
+-- main.lua blinks the requested number ("more"/"empty") or the extra
+-- berries in the bowl ("less").
+function Game:hintBlinkOff()
+    return self.curious > 0 and (self.frame // 6) % 2 == 1
 end

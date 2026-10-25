@@ -1,3 +1,4 @@
 *.pdx/
 __pycache__/
 preview/frames/
+tools/.cache/

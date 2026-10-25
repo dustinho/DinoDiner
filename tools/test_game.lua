@@ -295,12 +295,10 @@ test("random targets never repeat back to back", function()
     eq(g:pickTarget(), 2)
 end)
 
-test("berry layout stays inside the bowl and slots on screen", function()
+test("berry layout stays inside the bowl", function()
     for i = 1, 10 do
         local x, y = Layout.berryPos(i)
         check(x >= Layout.bowl.x + 8 and x + 30 <= Layout.bowl.x + 173 - 8, "berry x " .. i)
-        local sx, sy = Layout.slotPos(i)
-        check(sx >= 0 and sx + 18 <= 400 and sy + 19 < Layout.bowl.y - 10, "slot " .. i)
     end
 end)
 
