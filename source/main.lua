@@ -326,6 +326,24 @@ local function drawHearts(g)
     end
 end
 
+-- Small level indicator, bottom left: three dots filled up to the level
+-- (same look as the title screen's level picker).
+local function drawLevel(g)
+    local x, y, w, h = 4, 223, 40, 14
+    gfx.setColor(gfx.kColorWhite)
+    gfx.fillRoundRect(x, y, w, h, 7)
+    gfx.setColor(gfx.kColorBlack)
+    gfx.drawRoundRect(x, y, w, h, 7)
+    for i = 1, 3 do
+        local cx, cy = x + 8 + (i - 1) * 12, y + h // 2
+        if i <= g:level() then
+            gfx.fillCircleAtPoint(cx, cy, 3)
+        else
+            gfx.drawCircleAtPoint(cx, cy, 3)
+        end
+    end
+end
+
 local function drawPlay(g)
     img.bg:draw(0, 0)
     if g.state == "celebrate" then
@@ -354,6 +372,7 @@ local function drawPlay(g)
         end
     end
     drawPlayHints(g)
+    drawLevel(g)
     if g.state == "play" and pd.isCrankDocked() then
         pd.ui.crankIndicator:draw()
     end

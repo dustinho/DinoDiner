@@ -35,6 +35,8 @@ again.
 | A | Play |
 
 The voice announces each choice, so a child who can't read can use it too.
+During play, three small dots in the bottom-left corner show the current
+level.
 The chosen game and levels are **saved** between sessions.
 
 | Level | Counting | Multiplying (dinos × strawberries each) |
