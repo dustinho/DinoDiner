@@ -389,6 +389,27 @@ def ascii_sprite(rows):
     return filled
 
 
+# ---------------------------------------------------------------- A button
+def a_button(d):
+    """Black disc of odd diameter d with a white "A" centred to the pixel."""
+    yy, xx = np.indices((d, d))
+    c = (d - 1) / 2
+    disc = (xx - c) ** 2 + (yy - c) ** 2 <= (d / 2) ** 2
+    a = np.full((d, d), CLEAR)
+    a[disc] = BLACK
+    # pick a nearby size whose glyph is odd in both dimensions, so it has a
+    # true centre pixel in the odd-sized disc
+    base = round(d * 0.62)
+    sizes = sorted(range(base - 3, base + 3), key=lambda z: abs(z - base))
+    masks = [text_mask("A", z) for z in sizes]
+    m = next((m for m in masks if m.shape[0] % 2 and m.shape[1] % 2),
+             next((m for m in masks if m.shape[1] % 2), masks[0]))
+    h, w = m.shape
+    y0, x0 = (d - h) // 2, (d - w) // 2
+    a[y0:y0 + h, x0:x0 + w][m] = WHITE
+    return a
+
+
 # ---------------------------------------------------------------- launcher
 def make_launcher(mock, title, happy, berry):
     os.makedirs(LAUNCH, exist_ok=True)
@@ -414,6 +435,8 @@ def main():
     make_numbers()
     save(ascii_sprite(HEART), os.path.join(OUT, "heart.png"))
     save(big_heart(), os.path.join(OUT, "heart_big.png"))
+    save(a_button(25), os.path.join(OUT, "a_button.png"))
+    save(a_button(27), os.path.join(OUT, "a_button_big.png"))
     make_launcher(mock, title, happy, berry)
 
 

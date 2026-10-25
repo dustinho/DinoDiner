@@ -28,6 +28,8 @@ local img = {
     berry = loadImage("images/strawberry"),
     heart = loadImage("images/heart"),
     heartBig = loadImage("images/heart_big"),
+    aButton = loadImage("images/a_button"),
+    aButtonBig = loadImage("images/a_button_big"),
     trex = {},
     num = {},
 }
@@ -73,12 +75,11 @@ if pd.ui.crankIndicator.start then
 end
 
 ---------------------------------------------------------------- drawing
-local function drawAButton(cx, cy, r)
-    gfx.setColor(gfx.kColorBlack)
-    gfx.fillCircleAtPoint(cx, cy, r)
-    gfx.setImageDrawMode(gfx.kDrawModeFillWhite)
-    gfx.drawTextAligned("*A*", cx + 1, cy - 8, kTextAlignment.center)
-    gfx.setImageDrawMode(gfx.kDrawModeCopy)
+-- Pre-rendered so the "A" is centred to the pixel; `big` = pulse frame.
+local function drawAButton(cx, cy, big)
+    local b = big and img.aButtonBig or img.aButton
+    local w, h = b:getSize()
+    b:draw(cx - w // 2, cy - h // 2)
 end
 
 -- A little crank: circle, turning arm and knob.  dir = 1 / -1.
@@ -171,7 +172,7 @@ local function drawPlayHints(g)
     local cx, cy = Layout.prompt.x, Layout.prompt.y
     if g.state ~= "play" then return end
     if g.count == g.target and g.pending == 0 then
-        drawAButton(cx, cy, 12 + (g.frame // 8) % 2)
+        drawAButton(cx, cy, (g.frame // 8) % 2 == 1)
     elseif g.idle > 45 or g.count == 0 then
         drawCrankIcon(cx, cy, g.frame, g.count > g.target and -1 or 1)
     end
@@ -210,7 +211,7 @@ local function drawPlay(g)
     if g.state == "celebrate" then
         drawHearts(g)
         if g.celebrateFrames > 15 then
-            drawAButton(Layout.prompt.x, Layout.prompt.y, 12 + (g.frame // 8) % 2)
+            drawAButton(Layout.prompt.x, Layout.prompt.y, (g.frame // 8) % 2 == 1)
         end
     end
     drawPlayHints(g)
@@ -222,7 +223,7 @@ end
 local function drawTitle(g)
     img.title:draw(0, 0)
     local bob = math.floor(math.sin(g.frame * 0.2) * 2 + 0.5)
-    drawAButton(212, 159 + bob, 12)
+    drawAButton(212, 159 + bob, false)
 end
 
 ---------------------------------------------------------------- main loop

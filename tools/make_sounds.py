@@ -9,7 +9,8 @@ Output: 16-bit mono PCM WAV, 22050 Hz, in source/sounds/.
 Replace any file with a real recording of the same name to upgrade.
 
 Usage:  pip install kokoro-onnx soundfile numpy
-        python3 tools/make_sounds.py
+        python3 tools/make_sounds.py            (everything)
+        python3 tools/make_sounds.py yum_2      (just the named speech clips)
 The model and voice files (~120 MB) are fetched once from the npm registry
 (packages kokoro-q8-shards and kokoro-js) into tools/.cache/.
 """
@@ -18,6 +19,7 @@ import hashlib
 import io
 import os
 import subprocess
+import sys
 import tarfile
 import urllib.request
 import wave
@@ -42,10 +44,14 @@ SPEECH = {
     "hint_less": "Oopsie, that's too many! Turn the crank back to take some out.",
     "hint_ready": "That's just right! Press A to feed me!",
     "yum_1": "Yum yum yum! Thank you!",
-    "yum_2": "Mmm, delicious! You counted perfectly!",
+    "yum_2": "{hum} Delicious! You counted perfectly!",
     "yum_3": "Yummy! Thank you, friend!",
     "again": "Press A to play again!",
 }
+# Kokoro spells "Mmm" out as letters ("em em em"), so "{hum}" is replaced
+# by a long hummed /m/ given to the model directly as phonemes.
+HUM = "ˈmːːː,"
+
 for i, w in enumerate(WORDS, 1):
     SPEECH["count_%d" % i] = w.capitalize() + "!"
     SPEECH["request_%d" % i] = "Can I have %s %s, please?" % (
@@ -114,13 +120,20 @@ def trim_silence(s, thresh=0.01):
     return s[max(0, idx[0] - pad): idx[-1] + pad]
 
 
-def speech():
+def speech(only=None):
     from kokoro_onnx import Kokoro
     model, voices = ensure_model()
     k = Kokoro(model, voices)
     for name, text in SPEECH.items():
+        if only and name not in only:
+            continue
         speed = 0.95 if name.startswith(("count_", "request_")) else 1.0
-        s, sr = k.create(text, voice=VOICE, speed=speed, lang="en-us")
+        if "{hum}" in text:
+            rest = k.tokenizer.phonemize(text.replace("{hum}", "").strip(), "en-us")
+            s, sr = k.create(HUM + " " + rest, voice=VOICE, speed=speed,
+                             lang="en-us", is_phonemes=True)
+        else:
+            s, sr = k.create(text, voice=VOICE, speed=speed, lang="en-us")
         # pitch up without changing tempo, then soften the top end a touch
         af = "asetrate=%d,aresample=%d,atempo=%.4f,lowpass=f=7500" % (
             int(sr * PITCH), sr, 1 / PITCH)
@@ -190,6 +203,10 @@ def effects():
 
 def main():
     os.makedirs(OUT, exist_ok=True)
+    only = set(sys.argv[1:])
+    if only:                      # e.g. make_sounds.py yum_2  -> just that clip
+        speech(only)
+        return
     for f in glob.glob(os.path.join(OUT, "*.wav")):
         os.remove(f)
     speech()
