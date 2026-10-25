@@ -55,7 +55,7 @@ check_png("images/numbers/times")
 friends = re.findall(r'"(\w+)"', re.search(r"Game.FRIENDS = \{([^}]*)\}", game).group(1))
 for name in ["trex"] + friends:
     for pose in ("idle", "chomp", "happy"):
-        check_png("images/friends/%s_%s" % (name, pose), (46, 40))
+        check_png("images/friends/%s_%s" % (name, pose), (48, 40))
 effects = re.search(r"EFFECTS = \{(.*?)\}", main, re.S).group(1)
 for name in re.findall(r'"([^"]+)"', effects):
     check_wav("sounds/" + name)

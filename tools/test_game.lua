@@ -457,7 +457,7 @@ test("multiplying layout: 5x5 grid, extra row and dinos fit on screen", function
     g.state = "feeding"
     for r = 1, 4 do
         local x, y = g:portraitPos(r)
-        check(x >= 0 and x + 46 <= Layout.multiply.grid.x and y + 40 <= 240, "dino " .. r)
+        check(x >= 0 and x + 48 <= Layout.multiply.grid.x - 2 and y + 40 <= 240, "dino " .. r)
         local mx, my = g:mouthPos(r)
         check(mx > x and my > y, "mouth inside sprite " .. r)
     end

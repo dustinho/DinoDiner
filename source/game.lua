@@ -64,12 +64,13 @@ Layout = {
         bubble = { x = 186, y = 4, w = 176, h = 50, tip = { 158, 74 } },
         prompt = { x = 150, y = 34 },
         grid = { x = 226, y = 64, dx = 34, dy = 35 },
-        portraitX = 178,
+        portraitX = 175,
     },
-    -- mouth position inside each 46x40 friend sprite
+    -- mouth position inside each 48x40 friend sprite (printed by
+    -- tools/make_friends.py)
     friendMouth = {
-        trex = { 38, 22 }, triceratops = { 41, 28 }, stegosaurus = { 40, 31 },
-        brachiosaurus = { 38, 12 }, ankylosaurus = { 40, 33 },
+        trex = { 41, 22 }, triceratops = { 42, 29 }, stegosaurus = { 43, 31 },
+        brachiosaurus = { 40, 19 }, ankylosaurus = { 43, 34 },
     },
 }
 
