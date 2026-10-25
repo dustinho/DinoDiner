@@ -111,7 +111,7 @@ device.
 source/
   main.lua          Playdate front end: input, audio, saving, drawing
   game.lua          game rules and state machine (no SDK calls; unit-tested)
-  pdxinfo           metadata (version 1.5, build 15)
+  pdxinfo           metadata (version 1.5, build 16)
   images/           1-bit PNG sprites, backgrounds, numerals
   images/friends/   the party dinos (46x40, idle / chomp / happy)
   sounds/           speech + effects (mono 16-bit PCM WAV, 22 kHz)
