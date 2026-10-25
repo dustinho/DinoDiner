@@ -38,6 +38,16 @@ Simulator.
 | 14 | The berry inset inside a cell was hard-coded. | Derived from the cell pitch, so the grid can be retuned in one place. |
 | 15 | The tray looked heavy. 2–3 px solid box outlines and 50% dotted cells competed with the strawberries. | Tray and row boxes keep their white fill (so the berries stand out from the jungle) but have just a thin dotted edge. Empty cells are faint 25% dots. The strawberries are now the boldest thing on the tray. Check on hardware that the 25% cell dots are still visible on the reflective screen. |
 
+### Layout pass: one axis, centred total
+
+| # | Finding | Fix |
+|---|---|---|
+| 16 | The request bubble (56 px tall) and total badge (44 px) sat at different heights, so the top row looked ragged. | Both are 48 px tall with the same top edge in both games. A test enforces it. |
+| 17 | The total's number was pushed off-centre by a small strawberry icon, which also repeated the tray right below. | Icon removed. The number is centred in its box and hops inside the box, so the box never leaves the shared line. |
+| 18 | The total sat in a corner, not visibly tied to the berries it counts. | The box is centred over the strawberries: the whole tray when counting, the current rows when multiplying (it follows "each"). A test checks it for every row width. |
+| 19 | In Counting, the tray sat about 90 px below its total. | Tray raised to just under the total and moved right to clear the T-Rex's "!" marks. |
+| 20 | A narrow multiplying grid left no room for the prompt between the bubble and the total. | Prompt has a fixed spot under the bubble, above the T-Rex's "!" marks. A test checks it clears both boxes. |
+
 ### Still open
 
 - **Big T-Rex vs. grid in Multiplying:** the host takes the left 40% of

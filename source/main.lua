@@ -164,25 +164,22 @@ local function drawBubble(g, icon, invert)
     end
 end
 
--- Running total: how many berries are on the tray right now.  It hops
--- when the total changes and turns black when it matches the request.
+-- Running total: how many berries are on the tray right now, centred in
+-- its box, and the box centred over the berries.  The number hops when the
+-- total changes (the box stays put, on the same line as the request) and
+-- the box turns black when the total matches the request.
 local function drawTotal(g)
-    local t = g:layout().total
+    local x, y, w, h = g:totalBox()
     local n, matched = g:shownTotal()
-    local y = t.y
-    if g.changed and g.frame - g.changed < 4 then y = y - (4 - (g.frame - g.changed)) end
     gfx.setColor(matched and gfx.kColorBlack or gfx.kColorWhite)
-    gfx.fillRoundRect(t.x, y, t.w, t.h, 8)
+    gfx.fillRoundRect(x, y, w, h, 10)
     gfx.setColor(gfx.kColorBlack)
     gfx.setLineWidth(3)
-    gfx.drawRoundRect(t.x, y, t.w, t.h, 8)
+    gfx.drawRoundRect(x, y, w, h, 10)
     gfx.setLineWidth(1)
-    local mw, mh = img.berryMini:getSize()
-    if matched then gfx.setImageDrawMode(gfx.kDrawModeInverted) end
-    img.berryMini:draw(t.x + 7, y + (t.h - mh) // 2)
-    gfx.setImageDrawMode(gfx.kDrawModeCopy)
-    local left = t.x + 7 + mw
-    drawInk(img.num[math.min(n, 25)], (left + t.x + t.w) // 2, y + t.h // 2, matched)
+    local hop = 0
+    if g.changed and g.frame - g.changed < 4 then hop = 4 - (g.frame - g.changed) end
+    drawInk(img.num[math.min(n, 25)], x + w // 2, y + h // 2 - hop, matched)
 end
 
 ---------------------------------------------------------------- grid

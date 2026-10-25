@@ -489,14 +489,33 @@ test("running total badge: tray count, eaten count, then the whole amount", func
     check(runUntil(g, function() return g.state == "celebrate" end))
     n, matched = g:shownTotal()
     eq(n, 3)
-    for _, mode in ipairs(Game.MODES) do
-        local t = Layout[mode].total
-        check(t.x >= 0 and t.x + t.w <= 400 and t.y + t.h <= 240, mode .. " badge on screen")
+    -- request and total share one horizontal axis; the total is centred
+    -- over the berries; the prompt overlaps neither
+    local function overlaps(ax, ay, aw, ah, bx, by, bw, bh)
+        return ax < bx + bw and bx < ax + aw and ay < by + bh and by < ay + ah
+    end
+    local cases = { { "count", 3 } }
+    for each = 1, 5 do cases[#cases + 1] = { "multiply", 3, each } end
+    for _, c in ipairs(cases) do
+        local mode = c[1]
+        local h = newGame()
+        h.mode = mode
+        h.taught[mode] = true
+        h:startRound(c[2], c[3])
+        local x, y, w, ht = h:totalBox()
         local b = Layout[mode].bubble
-        check(t.x >= b.x + b.w + 8 or t.x + t.w <= b.x - 8 or t.y >= b.y + b.h + 8,
-            mode .. " badge clear of bubble")
+        local label = mode .. (c[3] and (" each=" .. c[3]) or "")
+        eq(y, b.y, label .. ": same top edge")
+        eq(ht, b.h, label .. ": same height")
+        check(x >= 0 and x + w <= 400, label .. ": on screen")
+        check(not overlaps(x, y, w, ht, b.x, b.y, b.w, b.h), label .. ": clear of bubble")
+        local first = h:cellPos(1)
+        local last = h:cellPos(mode == "count" and 5 or h.each)
+        local berriesMid = (first + last + 30) / 2
+        check(math.abs((x + w / 2) - berriesMid) <= 2, label .. ": centred over the berries")
         local p = Layout[mode].prompt
-        check(p.x - 17 >= b.x + b.w and p.x + 17 <= t.x, mode .. " prompt between bubble and badge")
+        check(not overlaps(p.x - 17, p.y - 17, 34, 34, x, y, w, ht), label .. ": prompt clear of total")
+        check(not overlaps(p.x - 17, p.y - 17, 34, 34, b.x, b.y, b.w, b.h), label .. ": prompt clear of bubble")
     end
 end)
 

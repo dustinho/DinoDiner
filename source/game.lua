@@ -54,18 +54,19 @@ Layout = {
     count = {
         dino = { x = 2, y = 92 },
         mouth = { x = 136, y = 152 },
-        -- top row: what the T-Rex wants (left)  [prompt]  what's on the tray (right)
-        bubble = { x = 50, y = 8, w = 128, h = 56, tip = { 140, 92 } },
-        total = { x = 300, y = 8, w = 92, h = 44 },    -- running-total badge
-        prompt = { x = 240, y = 32 },           -- crank / A-button nudge icon
-        grid = { x = 198, y = 150, cols = 5, dx = 34, dy = 36 },
+        -- top row, one shared axis: what the T-Rex wants (left), what's on
+        -- the tray (centred over the tray); the prompt sits between them
+        bubble = { x = 40, y = 8, w = 128, h = 48, tip = { 140, 92 } },
+        total = { y = 8, w = 64, h = 48 },      -- x: centred over the berries
+        prompt = { x = 216, y = 32 },           -- crank / A-button nudge icon
+        grid = { x = 212, y = 100, cols = 5, dx = 34, dy = 36 },   -- just under the total
     },
     multiply = {
         dino = { x = -26, y = 92 },
         mouth = { x = 110, y = 152 },
-        bubble = { x = 6, y = 6, w = 176, h = 46, tip = { 118, 86 } },
-        total = { x = 300, y = 6, w = 92, h = 44 },
-        prompt = { x = 241, y = 30 },
+        bubble = { x = 6, y = 8, w = 172, h = 48, tip = { 118, 88 } },
+        total = { y = 8, w = 64, h = 48 },
+        prompt = { x = 158, y = 74 },           -- under the bubble, above the T-Rex
         grid = { x = 234, y = 64, dx = 32, dy = 35 },
         portraitX = 178,        -- 48 px dino + 5 px gap before its row box
     },
@@ -560,6 +561,20 @@ function Game:friendPose(r)
         return "idle"
     end
     return self.count >= r * self.each and "happy" or "idle"
+end
+
+-- The total box, centred horizontally over the strawberries: the whole
+-- 2x5 tray when counting, the current rows when multiplying.
+function Game:totalBox()
+    local L = self:layout()
+    local G, t = L.grid, L.total
+    local left, width
+    if self.mode == "count" then
+        left, width = G.x - 6, 5 * G.dx + 12
+    else
+        left, width = G.x - 3, math.max(self.each, 1) * G.dx + 6
+    end
+    return left + (width - t.w) // 2, t.y, t.w, t.h
 end
 
 -- The running total shown in the badge: berries on the tray while playing,
