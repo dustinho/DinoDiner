@@ -54,17 +54,18 @@ Layout = {
     count = {
         dino = { x = 2, y = 92 },
         mouth = { x = 136, y = 152 },
-        bubble = { x = 230, y = 8, w = 128, h = 56, tip = { 212, 92 } },
-        total = { x = 284, y = 96, w = 92, h = 44 },   -- running-total badge
-        prompt = { x = 254, y = 118 },          -- crank / A-button nudge icon
+        -- top row: what the T-Rex wants (left)  [prompt]  what's on the tray (right)
+        bubble = { x = 50, y = 8, w = 128, h = 56, tip = { 140, 92 } },
+        total = { x = 300, y = 8, w = 92, h = 44 },    -- running-total badge
+        prompt = { x = 240, y = 32 },           -- crank / A-button nudge icon
         grid = { x = 198, y = 150, cols = 5, dx = 34, dy = 36 },
     },
     multiply = {
         dino = { x = -26, y = 92 },
         mouth = { x = 110, y = 152 },
-        bubble = { x = 186, y = 6, w = 176, h = 46, tip = { 172, 70 } },
-        total = { x = 6, y = 8, w = 92, h = 44 },      -- scoreboard corner
-        prompt = { x = 120, y = 76 },
+        bubble = { x = 6, y = 6, w = 176, h = 46, tip = { 118, 86 } },
+        total = { x = 300, y = 6, w = 92, h = 44 },
+        prompt = { x = 241, y = 30 },
         grid = { x = 226, y = 64, dx = 34, dy = 35 },
         portraitX = 175,
     },

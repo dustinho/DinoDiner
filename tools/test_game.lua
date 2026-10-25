@@ -469,7 +469,10 @@ test("running total badge: tray count, eaten count, then the whole amount", func
         local t = Layout[mode].total
         check(t.x >= 0 and t.x + t.w <= 400 and t.y + t.h <= 240, mode .. " badge on screen")
         local b = Layout[mode].bubble
-        check(t.x + t.w <= b.x - 8 or t.y >= b.y + b.h + 8, mode .. " badge clear of bubble")
+        check(t.x >= b.x + b.w + 8 or t.x + t.w <= b.x - 8 or t.y >= b.y + b.h + 8,
+            mode .. " badge clear of bubble")
+        local p = Layout[mode].prompt
+        check(p.x - 17 >= b.x + b.w and p.x + 17 <= t.x, mode .. " prompt between bubble and badge")
     end
 end)
 

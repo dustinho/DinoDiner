@@ -120,18 +120,21 @@ end
 -- number" blink after a "need more" answer.
 local function drawBubbleFrame(b, invert)
     local tipX, tipY = b.tip[1], b.tip[2]
+    -- the tail leaves the bottom edge on the side nearest the tip
+    local mid = math.max(b.x + 24, math.min(b.x + b.w - 24, tipX))
+    local l, r = mid - 11, mid + 11
     local fill = invert and gfx.kColorBlack or gfx.kColorWhite
     gfx.setColor(fill)
     gfx.fillRoundRect(b.x, b.y, b.w, b.h, 10)
-    gfx.fillTriangle(b.x + 16, b.y + b.h - 3, b.x + 38, b.y + b.h - 3, tipX, tipY)
+    gfx.fillTriangle(l, b.y + b.h - 3, r, b.y + b.h - 3, tipX, tipY)
     gfx.setColor(gfx.kColorBlack)
     gfx.setLineWidth(3)
     gfx.drawRoundRect(b.x, b.y, b.w, b.h, 10)
     gfx.setColor(fill)
-    gfx.fillRect(b.x + 18, b.y + b.h - 3, 19, 4)
+    gfx.fillRect(l + 2, b.y + b.h - 3, r - l - 3, 4)
     gfx.setColor(gfx.kColorBlack)
-    gfx.drawLine(b.x + 16, b.y + b.h - 1, tipX, tipY)
-    gfx.drawLine(b.x + 38, b.y + b.h - 1, tipX, tipY)
+    gfx.drawLine(l, b.y + b.h - 1, tipX, tipY)
+    gfx.drawLine(r, b.y + b.h - 1, tipX, tipY)
     gfx.setLineWidth(1)
 end
 
