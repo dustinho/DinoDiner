@@ -21,7 +21,7 @@ FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 def render(lines):
     screen = Image.new("L", (400, 240), 255)
     d = ImageDraw.Draw(screen)
-    color, width, mode = 0, 1, "copy"
+    color, width, mode, dotted = 0, 1, "copy", False
     cache = {}
     for line in lines:
         p = line.rstrip("\n").split("\t")
@@ -41,6 +41,9 @@ def render(lines):
             screen.paste(src, (int(n(1)), int(n(2))), im.split()[3])
         elif op == "setColor":
             color = int(n(0))
+            dotted = False
+        elif op == "setDitherPattern":
+            dotted = True
         elif op == "setLineWidth":
             width = int(n(0))
         elif op == "setImageDrawMode":
@@ -50,8 +53,17 @@ def render(lines):
         elif op == "fillRoundRect":
             d.rounded_rectangle([n(0), n(1), n(0) + n(2) - 1, n(1) + n(3) - 1], n(4), fill=c)
         elif op == "drawRoundRect":
-            d.rounded_rectangle([n(0), n(1), n(0) + n(2) - 1, n(1) + n(3) - 1], n(4),
-                                outline=c, width=width)
+            box = [n(0), n(1), n(0) + n(2) - 1, n(1) + n(3) - 1]
+            if dotted:   # 50% dither: draw on a scratch layer, keep every other pixel
+                layer = Image.new("L", screen.size, 0)
+                ImageDraw.Draw(layer).rounded_rectangle(box, n(4), outline=255, width=width)
+                px, lp = screen.load(), layer.load()
+                for yy in range(max(0, int(box[1])), min(240, int(box[3]) + 1)):
+                    for xx in range(max(0, int(box[0])), min(400, int(box[2]) + 1)):
+                        if lp[xx, yy] and (xx + yy) % 2 == 0:
+                            px[xx, yy] = c
+            else:
+                d.rounded_rectangle(box, n(4), outline=c, width=width)
         elif op == "fillTriangle":
             d.polygon([(n(0), n(1)), (n(2), n(3)), (n(4), n(5))], fill=c)
         elif op == "drawLine":

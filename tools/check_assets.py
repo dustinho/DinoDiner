@@ -42,16 +42,31 @@ def check_wav(rel):
 
 
 main = open(os.path.join(SRC, "main.lua")).read()
+game = open(os.path.join(SRC, "game.lua")).read()
 for rel in re.findall(r'loadImage\("([^"]+)"\)', main):
     check_png(rel, (400, 240) if rel in ("images/title", "images/play_bg") else None)
 for pose in re.search(r'for _, pose in ipairs\(\{([^}]*)\}', main).group(1).split(","):
     check_png("images/trex_" + pose.strip().strip('"'))
 for n in range(1, 11):
     check_png("images/numbers/num_%d" % n)
-    check_wav("sounds/count_%d" % n)
-    check_wav("sounds/request_%d" % n)
-names = re.search(r"SOUND_NAMES = \{(.*?)\}", main, re.S).group(1)
-for name in re.findall(r'"([^"]+)"', names):
+for n in range(1, 6):
+    check_png("images/numbers/num_s_%d" % n)
+check_png("images/numbers/times")
+friends = re.findall(r'"(\w+)"', re.search(r"Game.FRIENDS = \{([^}]*)\}", game).group(1))
+for name in ["trex"] + friends:
+    for pose in ("idle", "chomp", "happy"):
+        check_png("images/friends/%s_%s" % (name, pose), (46, 40))
+effects = re.search(r"EFFECTS = \{(.*?)\}", main, re.S).group(1)
+for name in re.findall(r'"([^"]+)"', effects):
+    check_wav("sounds/" + name)
+# every voice line game.lua can ask for
+voices = ["title", "instructions", "share_intro", "hint_empty", "hint_more", "hint_less",
+          "hint_ready", "again", "mode_count", "mode_multiply"]
+voices += ["yum_%d" % i for i in range(1, 4)] + ["level_%d" % i for i in range(1, 4)]
+voices += ["count_%d" % i for i in range(1, 26)] + ["request_%d" % i for i in range(1, 11)]
+voices += ["invite_%d" % i for i in range(1, 5)] + ["each_%d" % i for i in range(1, 6)]
+voices += ["fact_%d_%d" % (g, e) for g in range(2, 6) for e in range(1, 6)]
+for name in voices:
     check_wav("sounds/" + name)
 check_png("launcher/card", (350, 155))
 check_png("launcher/icon", (32, 32))

@@ -39,14 +39,21 @@ local function fakeAudio()
     return a
 end
 
-local function newGame(seq)
+local function memoryStore(initial)
+    local st = { data = initial }
+    function st:load() return self.data end
+    function st:save(t) self.data = t end
+    return st
+end
+
+local function newGame(seq, store)
     local audio = fakeAudio()
     local i = 0
     local rnd = function(lo, hi)
         if seq then i = i + 1; return seq[(i - 1) % #seq + 1] end
         return math.random(lo, hi)
     end
-    return Game.new(audio, rnd), audio
+    return Game.new(audio, rnd, store), audio
 end
 
 local function step(g, input)
@@ -95,7 +102,7 @@ end)
 test("every quantity 1-10 can be fed and is eaten one by one", function()
     for n = 1, 10 do
         local g, audio = newGame()
-        g.firstRound = false
+        g.taught.count = true
         g:startRound(n)
         step(g, { ticks = n })
         step(g, { a = true })
@@ -125,7 +132,7 @@ end)
 
 test("fast crank adds berries one at a time and stops at 10", function()
     local g, audio = newGame()
-    g.firstRound = false
+    g.taught.count = true
     g:startRound(4)
     step(g, { ticks = 25 })
     local prev, pops = g.count, 0
@@ -146,7 +153,7 @@ end)
 
 test("removing below zero is impossible", function()
     local g = newGame()
-    g.firstRound = false
+    g.taught.count = true
     g:startRound(2)
     step(g, { ticks = -3 })
     eq(g.pending, 0)
@@ -158,7 +165,7 @@ end)
 
 test("feed pressed while crank steps are queued waits for them", function()
     local g, audio = newGame()
-    g.firstRound = false
+    g.taught.count = true
     g:startRound(6)
     step(g, { ticks = 6, a = true })
     eq(g.state, "play")
@@ -170,7 +177,7 @@ end)
 
 test("count is spoken once, after turning settles", function()
     local g, audio = newGame()
-    g.firstRound = false
+    g.taught.count = true
     g:startRound(5)
     run(g, 30) -- request finishes
     local before = #audio.voices
@@ -186,7 +193,7 @@ end)
 
 test("count waits for the request voice instead of interrupting", function()
     local g, audio = newGame()
-    g.firstRound = false
+    g.taught.count = true
     g:startRound(3)
     step(g, { ticks = 2 })
     run(g, 12)
@@ -197,7 +204,7 @@ end)
 
 test("too few -> 'need more', recover, half point", function()
     local g, audio = newGame()
-    g.firstRound = false
+    g.taught.count = true
     g:startRound(3)
     step(g, { ticks = 2 })
     run(g, 10)
@@ -221,7 +228,7 @@ end)
 
 test("too many -> 'too many', crank back", function()
     local g, audio = newGame()
-    g.firstRound = false
+    g.taught.count = true
     g:startRound(2)
     step(g, { ticks = 4 })
     run(g, 15)
@@ -237,7 +244,7 @@ end)
 
 test("empty bowl -> spoken hint, not a mistake", function()
     local g, audio = newGame()
-    g.firstRound = false
+    g.taught.count = true
     g:startRound(2)
     step(g, { a = true })
     eq(audio.voices[#audio.voices], "hint_empty")
@@ -246,7 +253,7 @@ end)
 
 test("idle child gets a gentle reminder, at most three", function()
     local g, audio = newGame()
-    g.firstRound = false
+    g.taught.count = true
     g:startRound(2)
     run(g, 2000)
     local n = 0
@@ -256,7 +263,7 @@ end)
 
 test("celebration waits for A; A during feeding is ignored", function()
     local g = newGame()
-    g.firstRound = false
+    g.taught.count = true
     g:startRound(2)
     step(g, { ticks = 2 })
     run(g, 8)
@@ -272,33 +279,187 @@ test("celebration waits for A; A during feeding is ignored", function()
 end)
 
 test("progression: 1,2,3 then 4,5 then 6..10 introduced in order", function()
-    local g = newGame({ 2, 1, 3, 2, 1, 3 })
+    local store = memoryStore()
+    local g = newGame({ 2, 1, 3, 2, 1, 3 }, store)
     step(g, { a = true })
     local seen = {}
     for _ = 1, 14 do
         seen[#seen + 1] = g.target
         feedCorrect(g)
     end
-    -- stage 1: 1,2,3 (3 points) -> stage 2: 4,5 then one random (3 points)
-    -- -> stage 3: 6,7,8,9,10
+    -- level 1: 1,2,3 (3 points) -> level 2: 4,5 then one random (3 points)
+    -- -> level 3: 6,7,8,9,10
     eq(table.concat(seen, ",", 1, 5), "1,2,3,4,5")
-    check(seen[6] >= 1 and seen[6] <= 5, "random within stage 2")
+    check(seen[6] >= 1 and seen[6] <= 5, "random within level 2")
     eq(table.concat(seen, ",", 7, 11), "6,7,8,9,10")
-    eq(g.stage, 3)
+    eq(g.levels.count, 3)
+    eq(store.data.levels.count, 3, "unlocked level is saved")
 end)
 
 test("random targets never repeat back to back", function()
     local g = newGame({ 3, 3, 3, 2 })
-    g.stage = 1
     g.introduced = { [1] = true, [2] = true, [3] = true }
     g.lastTarget = 3
-    eq(g:pickTarget(), 2)
+    eq(g:pickCount(), 2)
 end)
 
-test("berry layout stays inside the bowl", function()
+test("counting grid: 2 rows of 5, inside the tray", function()
+    local g = newGame()
+    g.taught.count = true
+    g:startRound(10)
+    local L = Layout.count.grid
     for i = 1, 10 do
-        local x, y = Layout.berryPos(i)
-        check(x >= Layout.bowl.x + 8 and x + 30 <= Layout.bowl.x + 173 - 8, "berry x " .. i)
+        local x, y = g:cellPos(i)
+        eq(x, L.x + ((i - 1) % 5) * L.dx + 2, "column " .. i)
+        eq(y, L.y + ((i - 1) // 5) * L.dy + 2, "row " .. i)
+        check(x >= 0 and x + 30 <= 400 and y + 32 <= 240, "on screen " .. i)
+    end
+end)
+
+---------------------------------------------------------------- title / settings
+test("title: left/right picks the game, up/down the level, both saved", function()
+    local store = memoryStore()
+    local g, audio = newGame(nil, store)
+    eq(g.mode, "count")
+    step(g, { right = true })
+    eq(g.mode, "multiply")
+    eq(audio.voices[#audio.voices], "mode_multiply")
+    run(g, 25)
+    eq(audio.voices[#audio.voices], "level_1", "level announced after the game")
+    step(g, { up = true })
+    eq(g:level(), 2)
+    eq(audio.voices[#audio.voices], "level_2")
+    step(g, { up = true })
+    step(g, { up = true })
+    eq(g:level(), 3, "capped at 3")
+    check(contains(audio.sfxs, "bump"))
+    eq(store.data.mode, "multiply")
+    eq(store.data.levels.multiply, 3)
+    eq(store.data.levels.count, 1, "other game keeps its level")
+    step(g, { left = true })
+    eq(g.mode, "count")
+end)
+
+test("saved settings are restored; junk is ignored", function()
+    local g = newGame(nil, memoryStore({ mode = "multiply", levels = { count = 3, multiply = 2 } }))
+    eq(g.mode, "multiply")
+    eq(g.levels.count, 3)
+    eq(g.levels.multiply, 2)
+    local g2 = newGame(nil, memoryStore({ mode = "chess", levels = { count = 9, multiply = "x" } }))
+    eq(g2.mode, "count")
+    eq(g2.levels.count, 1)
+    eq(g2.levels.multiply, 1)
+    local g3 = newGame(nil, memoryStore("garbage"))
+    eq(g3.mode, "count")
+end)
+
+---------------------------------------------------------------- multiplying
+local function multiplyGame(seq)
+    local g, audio = newGame(seq)
+    g.mode = "multiply"
+    g.taught.multiply = true
+    return g, audio
+end
+
+test("multiplying: first round explains, then invites friends and asks", function()
+    local g, audio = newGame()
+    g.mode = "multiply"
+    g:startRound(3, 2)
+    eq(audio.voices[#audio.voices], "share_intro")
+    eq(table.concat(g.voiceQueue, ","), "invite_2,each_2")
+    eq(g.target, 6)
+    eq(#g.friends, 3)
+    eq(g.friends[1], "trex")
+    check(g.friends[2] ~= g.friends[3], "different friends")
+end)
+
+test("multiplying: every groups x each from 2x1 to 5x5 can be fed", function()
+    for groups = 2, 5 do
+        for each = 1, 5 do
+            local g, audio = multiplyGame()
+            g:startRound(groups, each)
+            step(g, { ticks = groups * each })
+            step(g, { a = true })
+            check(runUntil(g, function() return g.state == "feeding" end), "no feeding")
+            local start = #audio.voices
+            check(runUntil(g, function() return g.state == "celebrate" end), "no celebration")
+            eq(g.eaten, groups * each)
+            -- skip-counting: one count per row, in steps of `each`
+            local counted = {}
+            for i = start + 1, #audio.voices do
+                if audio.voices[i]:match("^count_") then counted[#counted + 1] = audio.voices[i] end
+            end
+            eq(#counted, groups, "one count per row " .. groups .. "x" .. each)
+            for r = 1, groups do eq(counted[r], "count_" .. r * each) end
+            eq(audio.voices[#audio.voices], "fact_" .. groups .. "_" .. each)
+        end
+    end
+end)
+
+test("multiplying: berries fill row by row, one row per dino", function()
+    local g = multiplyGame()
+    g:startRound(3, 4)
+    local L = Layout.multiply.grid
+    for i = 1, 12 do
+        local x, y = g:cellPos(i)
+        eq(y, L.y + ((i - 1) // 4) * L.dy + 2, "row of berry " .. i)
+        eq(x, L.x + ((i - 1) % 4) * L.dx + 2, "column of berry " .. i)
+    end
+    step(g, { ticks = 4 })
+    run(g, 20)
+    eq(g:friendPose(1), "happy", "first dino's row is full")
+    eq(g:friendPose(2), "idle")
+end)
+
+test("multiplying: one extra row allowed, never past five rows or 25", function()
+    local g = multiplyGame()
+    g:startRound(2, 3)
+    eq(g.maxCount, 9)
+    g:startRound(5, 5)
+    eq(g.maxCount, 25)
+    g:startRound(4, 5)
+    eq(g.maxCount, 25)
+    g:startRound(5, 2)
+    eq(g.maxCount, 10)
+end)
+
+test("multiplying: too few repeats how many each dino wants", function()
+    local g, audio = multiplyGame()
+    g:startRound(2, 3)
+    step(g, { ticks = 4 })
+    run(g, 20)
+    step(g, { a = true })
+    eq(g.hint, "more")
+    eq(audio.voices[#audio.voices], "hint_more")
+    eq(g.voiceQueue[1], "each_3")
+end)
+
+test("multiplying: levels stay in range", function()
+    for level = 1, 3 do
+        local g = multiplyGame()
+        g.levels.multiply = level
+        local lv = Game.LEVELS.multiply[level]
+        for _ = 1, 50 do
+            g:startRound()
+            check(g.groups >= lv.groups[1] and g.groups <= lv.groups[2], "groups")
+            check(g.each >= lv.each[1] and g.each <= lv.each[2], "each")
+        end
+    end
+end)
+
+test("multiplying layout: 5x5 grid, extra row and dinos fit on screen", function()
+    local g = multiplyGame()
+    g:startRound(4, 5)
+    for i = 1, g.maxCount do
+        local x, y = g:cellPos(i)
+        check(x >= 0 and x + 30 <= 400 and y >= 0 and y + 32 <= 240, "berry " .. i)
+    end
+    g.state = "feeding"
+    for r = 1, 4 do
+        local x, y = g:portraitPos(r)
+        check(x >= 0 and x + 46 <= Layout.multiply.grid.x and y + 40 <= 240, "dino " .. r)
+        local mx, my = g:mouthPos(r)
+        check(mx > x and my > y, "mouth inside sprite " .. r)
     end
 end)
 
@@ -364,6 +525,45 @@ test("main.lua runs every state against the Playdate mock", function()
     mock.docked = true
     frames(2)
     snap("12_crank_docked")
+    mock.docked = false
+    -- multiplying game
+    g.state = "title"
+    mock.step({ right = true })
+    frames(5)
+    snap("13_title_multiply")
+    g.taught.multiply = true
+    g:startRound(3, 4)
+    frames(4)
+    snap("14_friends_arrive")
+    frames(60)
+    mock.step({ ticks = 6 })
+    frames(40)
+    snap("15_multiply_half")
+    mock.step({ ticks = 6 })
+    frames(40)
+    snap("16_multiply_full")
+    mock.step({ a = true })
+    frames(40)
+    snap("17_multiply_feeding")
+    ok = false
+    for _ = 1, 400 do
+        mock.step()
+        if g.state == "celebrate" then ok = true break end
+    end
+    check(ok, "multiplying reached celebration")
+    frames(30)
+    snap("18_multiply_celebrate")
+    g:startRound(5, 5)
+    mock.step({ ticks = 25 })
+    frames(120)
+    snap("19_multiply_5x5")
+    g:startRound(2, 3)
+    mock.step({ ticks = 9 })
+    frames(60)
+    mock.step({ a = true })
+    frames(5)
+    snap("20_multiply_too_many")
+    check(mock.saved.settings and mock.saved.settings.mode == "multiply", "settings saved")
     check(#mock.played > 0, "sounds played")
 end)
 

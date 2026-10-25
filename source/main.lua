@@ -1,5 +1,5 @@
--- Dino Diner: feed a baby T-Rex the number of strawberries it asks for.
--- Playdate front end: input, audio and drawing.  Rules live in game.lua.
+-- Dino Diner: feed a baby T-Rex (and friends) the strawberries they ask for.
+-- Playdate front end: input, audio, saving and drawing.  Rules live in game.lua.
 
 import "CoreLibs/graphics"
 import "CoreLibs/crank"
@@ -23,15 +23,17 @@ end
 local img = {
     title = loadImage("images/title"),
     bg = loadImage("images/play_bg"),
-    bowl = loadImage("images/bowl_empty"),
-    bowlFront = loadImage("images/bowl_front"),
     berry = loadImage("images/strawberry"),
+    berryMini = loadImage("images/strawberry_mini"),
     heart = loadImage("images/heart"),
     heartBig = loadImage("images/heart_big"),
     aButton = loadImage("images/a_button"),
     aButtonBig = loadImage("images/a_button_big"),
+    times = loadImage("images/numbers/times"),
     trex = {},
     num = {},
+    numSmall = {},
+    friends = {},
 }
 for _, pose in ipairs({ "idle", "blink", "excited", "curious", "chomp", "chew", "happy" }) do
     img.trex[pose] = loadImage("images/trex_" .. pose)
@@ -39,47 +41,64 @@ end
 for n = 1, 10 do
     img.num[n] = loadImage("images/numbers/num_" .. n)
 end
-
-local SOUND_NAMES = { "title", "instructions", "hint_empty", "hint_more", "hint_less",
-    "hint_ready", "yum_1", "yum_2", "yum_3", "again",
-    "pop", "remove", "chomp", "chew", "cheer", "whoosh", "bump" }
-for n = 1, 10 do
-    SOUND_NAMES[#SOUND_NAMES + 1] = "count_" .. n
-    SOUND_NAMES[#SOUND_NAMES + 1] = "request_" .. n
+for n = 1, 5 do
+    img.numSmall[n] = loadImage("images/numbers/num_s_" .. n)
+end
+for _, name in ipairs({ "trex", table.unpack(Game.FRIENDS) }) do
+    img.friends[name] = {}
+    for _, pose in ipairs({ "idle", "chomp", "happy" }) do
+        img.friends[name][pose] = loadImage("images/friends/" .. name .. "_" .. pose)
+    end
 end
 
+-- Effects are preloaded; voice clips (there are many) load when first used.
+local EFFECTS = { "pop", "remove", "chomp", "chew", "cheer", "whoosh", "bump" }
 local samples = {}
-for _, name in ipairs(SOUND_NAMES) do
-    samples[name] = snd.sampleplayer.new("sounds/" .. name)
-    assert(samples[name], "missing sound: " .. name)
+local function sample(name)
+    local s = samples[name]
+    if not s then
+        s = snd.sampleplayer.new("sounds/" .. name)
+        assert(s, "missing sound: " .. name)
+        samples[name] = s
+    end
+    return s
 end
+for _, name in ipairs(EFFECTS) do sample(name) end
 
 local currentVoice = nil
 local audio = {}
 function audio:sfx(name)
-    samples[name]:play()
+    sample(name):play()
 end
 function audio:voice(name)
     if currentVoice then currentVoice:stop() end
-    currentVoice = samples[name]
+    currentVoice = sample(name)
     currentVoice:play()
 end
 function audio:voicePlaying()
     return currentVoice ~= nil and currentVoice:isPlaying()
 end
 
-local game = Game.new(audio)
+-- Chosen game and levels survive restarts.
+local store = {}
+function store:load() return pd.datastore.read("settings") end
+function store:save(t) pd.datastore.write(t, "settings") end
+
+local game = Game.new(audio, nil, store)
 
 if pd.ui.crankIndicator.start then
     pd.ui.crankIndicator:start()   -- required before SDK 2.1, harmless after
 end
 
----------------------------------------------------------------- drawing
+---------------------------------------------------------------- drawing helpers
+local function drawCentered(image, cx, cy)
+    local w, h = image:getSize()
+    image:draw(cx - w // 2, cy - h // 2)
+end
+
 -- Pre-rendered so the "A" is centred to the pixel; `big` = pulse frame.
 local function drawAButton(cx, cy, big)
-    local b = big and img.aButtonBig or img.aButton
-    local w, h = b:getSize()
-    b:draw(cx - w // 2, cy - h // 2)
+    drawCentered(big and img.aButtonBig or img.aButton, cx, cy)
 end
 
 -- A little crank: circle, turning arm and knob.  dir = 1 / -1.
@@ -97,12 +116,10 @@ local function drawCrankIcon(cx, cy, frame, dir)
     gfx.setLineWidth(1)
 end
 
--- Speech bubble with an icon and the big numeral.  `invert` flips it to
--- black with a white numeral: the "look at the number" blink after a
--- "need more" answer.
-local function drawBubble(contentImg, number, invert)
-    local b = Layout.bubble
-    local tipX, tipY = b.x + 6, b.y + b.h + 18
+-- Speech bubble frame.  `invert` flips it to black: the "look at the
+-- number" blink after a "need more" answer.
+local function drawBubbleFrame(b, invert)
+    local tipX, tipY = b.tip[1], b.tip[2]
     local fill = invert and gfx.kColorBlack or gfx.kColorWhite
     gfx.setColor(fill)
     gfx.fillRoundRect(b.x, b.y, b.w, b.h, 10)
@@ -116,25 +133,75 @@ local function drawBubble(contentImg, number, invert)
     gfx.drawLine(b.x + 16, b.y + b.h - 1, tipX, tipY)
     gfx.drawLine(b.x + 38, b.y + b.h - 1, tipX, tipY)
     gfx.setLineWidth(1)
-    local cw, ch = contentImg:getSize()
-    contentImg:draw(b.x + 16, b.y + (b.h - ch) // 2)
-    if number then
-        local n = img.num[number]
-        local nw, nh = n:getSize()
+end
+
+local function drawInk(image, cx, cy, invert)
+    if invert then gfx.setImageDrawMode(gfx.kDrawModeFillWhite) end
+    drawCentered(image, cx, cy)
+    gfx.setImageDrawMode(gfx.kDrawModeCopy)
+end
+
+-- Counting: [berry] N.   Multiplying: [dino] G  x  [berry] E.
+local function drawBubble(g, icon, invert)
+    local b = g:layout().bubble
+    drawBubbleFrame(b, invert)
+    local cy = b.y + b.h // 2
+    if g.mode == "count" then
+        local cw, ch = icon:getSize()
+        icon:draw(b.x + 16, cy - ch // 2)
         local left = b.x + 16 + cw
-        if invert then gfx.setImageDrawMode(gfx.kDrawModeFillWhite) end
-        n:draw(left + (b.x + b.w - left - nw) // 2, b.y + (b.h - nh) // 2)
-        gfx.setImageDrawMode(gfx.kDrawModeCopy)
+        drawInk(img.num[g.target], (left + b.x + b.w) // 2, cy, invert)
+    else
+        local x = b.x + 8
+        drawCentered(img.friends.trex.idle, x + 22, cy)
+        drawInk(img.numSmall[g.groups], x + 60, cy, invert)
+        drawInk(img.times, x + 86, cy, invert)
+        drawCentered(icon, x + 116, cy)
+        drawInk(img.numSmall[g.each], x + 152, cy, invert)
     end
 end
 
+---------------------------------------------------------------- grid
 local POP_OFFSET <const> = { -7, -5, -3, -1 }
 
-local function drawBowl(g)
-    local bx, by = Layout.bowl.x, Layout.bowl.y
-    img.bowl:draw(bx, by)
+-- Dotted outline of one grid cell (inset so neighbours don't share edges).
+local function drawCell(x, y)
+    gfx.setColor(gfx.kColorBlack)
+    gfx.setDitherPattern(0.5, gfx.image.kDitherTypeBayer2x2)
+    gfx.drawRoundRect(x + 1, y + 1, 32, 33, 5)
+    gfx.setColor(gfx.kColorBlack)
+end
+
+local function drawMat(x, y, w, h, lineWidth)
+    gfx.setColor(gfx.kColorWhite)
+    gfx.fillRoundRect(x, y, w, h, 8)
+    gfx.setColor(gfx.kColorBlack)
+    gfx.setLineWidth(lineWidth)
+    gfx.drawRoundRect(x, y, w, h, 8)
+    gfx.setLineWidth(1)
+end
+
+-- Grid tray: counting shows a 2x5 grid; multiplying one row per dino,
+-- as many cells wide as each dino wants.
+local function drawTray(g)
+    local L = g:layout().grid
+    if g.mode == "count" then
+        drawMat(L.x - 6, L.y - 6, 5 * L.dx + 12, 2 * L.dy + 12, 3)
+        for r = 0, 1 do
+            for c = 0, 4 do drawCell(L.x + c * L.dx, L.y + r * L.dy) end
+        end
+    else
+        for r = 1, g.groups do
+            local y = L.y + (r - 1) * L.dy
+            drawMat(L.x - 3, y - 1, g.each * L.dx + 6, L.dy, 2)
+            for c = 0, g.each - 1 do drawCell(L.x + c * L.dx, y) end
+        end
+    end
+end
+
+local function drawBerries(g)
     for i = 1, g.count do
-        local x, y = Layout.berryPos(i)
+        local x, y = g:cellPos(i)
         local popped = g.pops[i]
         if g.state == "play" and popped and g.frame - popped < #POP_OFFSET then
             y = y + POP_OFFSET[g.frame - popped + 1]
@@ -151,14 +218,11 @@ local function drawBowl(g)
             img.berry:draw(x, y)
         end
     end
-    local _, bh = img.bowl:getSize()
-    local _, fh = img.bowlFront:getSize()
-    img.bowlFront:draw(bx, by + bh - fh)
     -- a small "poof" where a berry was taken out
     gfx.setColor(gfx.kColorBlack)
     for _, p in ipairs(g.poofs) do
-        local x, y = Layout.berryPos(p.i)
-        x, y = x + 12, y + 12
+        local x, y = g:cellPos(p.i)
+        x, y = x + 15, y + 16
         local r1, r2 = 4 + p.t, 7 + p.t * 1.5
         for k = 0, 5 do
             local a = k * math.pi / 3
@@ -168,22 +232,37 @@ local function drawBowl(g)
     end
 end
 
+-- One dino at the start of each row; they hop when their row is full.
+local function drawFriends(g)
+    if g.mode ~= "multiply" then return end
+    for r = 1, g.groups do
+        local x, y = g:portraitPos(r)
+        local pose = g:friendPose(r)
+        if pose == "happy" and g.state ~= "feeding" then
+            y = y - math.floor(math.abs(math.sin((g.frame + r * 7) * 0.3)) * 3)
+        end
+        img.friends[g.friends[r]][pose]:draw(x, y)
+    end
+end
+
+---------------------------------------------------------------- scene
 local function drawPlayHints(g)
-    local cx, cy = Layout.prompt.x, Layout.prompt.y
+    local p = g:layout().prompt
     if g.state ~= "play" then return end
     if g.count == g.target and g.pending == 0 then
-        drawAButton(cx, cy, (g.frame // 8) % 2 == 1)
+        drawAButton(p.x, p.y, (g.frame // 8) % 2 == 1)
     elseif g.idle > 45 or g.count == 0 then
-        drawCrankIcon(cx, cy, g.frame, g.count > g.target and -1 or 1)
+        drawCrankIcon(p.x, p.y, g.frame, g.count > g.target and -1 or 1)
     end
 end
 
 local function drawDino(g)
-    local y = Layout.dino.y
+    local d = g:layout().dino
+    local y = d.y
     if g.state == "celebrate" then
         y = y - math.floor(math.abs(math.sin(g.celebrateFrames * 0.25)) * 6)
     end
-    img.trex[g:pose()]:draw(Layout.dino.x, y)
+    img.trex[g:pose()]:draw(d.x, y)
 end
 
 local function drawHearts(g)
@@ -199,19 +278,27 @@ end
 local function drawPlay(g)
     img.bg:draw(0, 0)
     if g.state == "celebrate" then
-        drawBubble(img.heartBig, g.target)
+        drawBubble(g, img.heartBig)
     else
         local blink = (g.hint == "more" or g.hint == "empty") and g:hintBlinkOff()
-        drawBubble(img.berry, g.target, blink)
+        drawBubble(g, img.berry, blink)
     end
-    drawBowl(g)
+    drawTray(g)
+    drawBerries(g)
     drawDino(g)
-    local x, y = g:flyingPos()
-    if x then img.berry:draw(x, y) end
+    drawFriends(g)
+    for _, f in ipairs(g:flyingBerries()) do
+        if f.small then
+            img.berryMini:draw(f.x + 7, f.y + 8)
+        else
+            img.berry:draw(f.x, f.y)
+        end
+    end
     if g.state == "celebrate" then
         drawHearts(g)
         if g.celebrateFrames > 15 then
-            drawAButton(Layout.prompt.x, Layout.prompt.y, (g.frame // 8) % 2 == 1)
+            local p = g:layout().prompt
+            drawAButton(p.x, p.y, (g.frame // 8) % 2 == 1)
         end
     end
     drawPlayHints(g)
@@ -220,10 +307,27 @@ local function drawPlay(g)
     end
 end
 
+-- Title: game choice (left/right) and level (up/down) under PLAY.
 local function drawTitle(g)
     img.title:draw(0, 0)
     local bob = math.floor(math.sin(g.frame * 0.2) * 2 + 0.5)
     drawAButton(212, 159 + bob, false)
+    local cx, y = 282, 180
+    drawMat(cx - 62, y, 124, 40, 2)
+    -- arrows hint that left/right changes the game
+    gfx.fillTriangle(cx - 56, y + 11, cx - 50, y + 6, cx - 50, y + 16)
+    gfx.fillTriangle(cx + 56, y + 11, cx + 50, y + 6, cx + 50, y + 16)
+    gfx.drawTextAligned(g.mode == "count" and "*Counting*" or "*Multiplying*",
+        cx, y + 3, kTextAlignment.center)
+    -- level pips: filled up to the current level
+    for i = 1, 3 do
+        local px = cx - 20 + (i - 1) * 20
+        if i <= g:level() then
+            gfx.fillCircleAtPoint(px, y + 30, 5)
+        else
+            gfx.drawCircleAtPoint(px, y + 30, 5)
+        end
+    end
 end
 
 ---------------------------------------------------------------- main loop
@@ -235,6 +339,7 @@ function pd.update()
         b = pd.buttonJustPressed(pd.kButtonB),
         up = pd.buttonJustPressed(pd.kButtonUp),
         down = pd.buttonJustPressed(pd.kButtonDown),
+        left = pd.buttonJustPressed(pd.kButtonLeft),
         right = pd.buttonJustPressed(pd.kButtonRight),
     })
     if game.state == "title" then

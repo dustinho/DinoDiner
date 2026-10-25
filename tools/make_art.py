@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate Dino Diner's 1-bit Playdate art.
 
-The T-Rex poses, backgrounds and bowl are lifted from the art-direction
+The T-Rex poses and backgrounds are lifted from the art-direction
 mockup (tools/reference/mockup.png) and re-quantised to native 1-bit pixels.
 Strawberries and numerals are drawn procedurally so they stay crisp at
 their small native sizes.
@@ -263,46 +263,6 @@ def vector_berry(scale=1.0):
     return a, body, crown
 
 
-# ---------------------------------------------------------------- bowl
-BOWL_BOX = (672, 842, 868, 958)
-BOWL_SIZE = (184, 80)
-BOWL_INNER = (19, 21, 179, 47)   # inner ellipse in mockup-crop px
-
-
-def make_bowl(mock):
-    c = mock.crop(BOWL_BOX)
-    sx, sy = BOWL_SIZE[0] / c.width, BOWL_SIZE[1] / c.height
-    g = c.resize(BOWL_SIZE, Image.LANCZOS)
-    q = quant(g, 70, 150)
-    q[:, :1] = WHITE
-    q[:, -1:] = WHITE
-    q[-1:, :] = WHITE
-    q = clear_outside(q)
-    q, ox, oy = trim(q)
-    ix0, iy0, ix1, iy1 = BOWL_INNER
-    cx = (ix0 + ix1) / 2 * sx - ox
-    cy = (iy0 + iy1) / 2 * sy - oy
-    ra = (ix1 - ix0) / 2 * sx
-    rb = (iy1 - iy0) / 2 * sy
-    # calm the noisy interior: plain white with a soft shadow under the rim
-    yy, xx = np.indices(q.shape)
-    e = ((xx - cx) / (ra - 3)) ** 2 + ((yy - cy) / (rb - 2)) ** 2
-    inside = e < 1
-    q[inside] = WHITE
-    shadow = inside & (yy < cy - rb * 0.1) & (e > 0.35)
-    q[shadow & ((xx + yy) % 2 == 0)] = BLACK
-    # front = everything below the inner rim's near edge; drawn over berries
-    front = q.copy()
-    for x in range(q.shape[1]):
-        t = (x - cx) / ra
-        edge = cy + rb * np.sqrt(1 - t * t) if abs(t) < 1 else cy
-        front[:int(np.ceil(edge)) + 1, x] = CLEAR
-    save(q, os.path.join(OUT, "bowl_empty.png"))
-    save(front, os.path.join(OUT, "bowl_front.png"))
-    print("bowl", q.shape[1], "x", q.shape[0], "inner centre", round(cx), round(cy),
-          "radii", round(ra), round(rb))
-
-
 # ---------------------------------------------------------------- backgrounds
 def make_title(mock):
     g = mock.crop((21, 18, 755, 483))
@@ -348,6 +308,15 @@ def make_numbers():
         a = np.full(m.shape, CLEAR)
         a[m] = BLACK
         save(a, os.path.join(OUT, "numbers", "num_%d.png" % n))
+    for n in range(1, 6):              # multiplying bubble: dinos x berries each
+        m = text_mask(str(n), 40)
+        a = np.full(m.shape, CLEAR)
+        a[m] = BLACK
+        save(a, os.path.join(OUT, "numbers", "num_s_%d.png" % n))
+    m = text_mask("×", 30)
+    a = np.full(m.shape, CLEAR)
+    a[m] = BLACK
+    save(a, os.path.join(OUT, "numbers", "times.png"))
 
 
 # ---------------------------------------------------------------- hearts
@@ -429,7 +398,8 @@ def main():
     happy = make_dino(mock)
     berry, _, _ = vector_berry(1.0)
     save(berry, os.path.join(OUT, "strawberry.png"))
-    make_bowl(mock)
+    mini, _, _ = vector_berry(0.5)       # berries shrinking into a friend's mouth
+    save(mini, os.path.join(OUT, "strawberry_mini.png"))
     title = make_title(mock)
     make_play_bg(mock)
     make_numbers()

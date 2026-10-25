@@ -38,8 +38,8 @@ WORDS = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
 SPEECH = {
     "title": "Dino Diner! Press A to play!",
     "instructions": "Hi there! I'm a hungry little dino. "
-                    "Turn the crank to put strawberries in my bowl. Then press A to feed me!",
-    "hint_empty": "My bowl is empty! Turn the crank to add some strawberries.",
+                    "Turn the crank to put strawberries on my tray. Then press A to feed me!",
+    "hint_empty": "No strawberries yet! Turn the crank to add some.",
     "hint_more": "Ooh, I need a few more! Turn the crank to add some.",
     "hint_less": "Oopsie, that's too many! Turn the crank back to take some out.",
     "hint_ready": "That's just right! Press A to feed me!",
@@ -52,10 +52,35 @@ SPEECH = {
 # by a long hummed /m/ given to the model directly as phonemes.
 HUM = "ˈmːːː,"
 
+WORDS += ["eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
+          "seventeen", "eighteen", "nineteen", "twenty", "twenty-one", "twenty-two",
+          "twenty-three", "twenty-four", "twenty-five"]
+
+# Multiplying game, title-screen choices
+SPEECH.update({
+    "share_intro": "Let's have a dino party! Every dino gets its own row. "
+                   "Give each dino the same number of strawberries!",
+    "mode_count": "Counting!",
+    "mode_multiply": "Dino party! Multiplying!",
+    "level_1": "Level one!",
+    "level_2": "Level two!",
+    "level_3": "Level three!",
+})
+for f in range(1, 5):
+    SPEECH["invite_%d" % f] = "I invited %s %s!" % (WORDS[f - 1], "friend" if f == 1 else "friends")
+for e in range(1, 6):
+    SPEECH["each_%d" % e] = "We each want %s %s!" % (
+        WORDS[e - 1], "strawberry" if e == 1 else "strawberries")
+for g in range(2, 6):
+    for e in range(1, 6):
+        SPEECH["fact_%d_%d" % (g, e)] = "%s dinos with %s each makes %s!" % (
+            WORDS[g - 1].capitalize(), WORDS[e - 1], WORDS[g * e - 1])
+
 for i, w in enumerate(WORDS, 1):
     SPEECH["count_%d" % i] = w.capitalize() + "!"
-    SPEECH["request_%d" % i] = "Can I have %s %s, please?" % (
-        w, "strawberry" if i == 1 else "strawberries")
+    if i <= 10:
+        SPEECH["request_%d" % i] = "Can I have %s %s, please?" % (
+            w, "strawberry" if i == 1 else "strawberries")
 
 
 # ---------------------------------------------------------------- model fetch

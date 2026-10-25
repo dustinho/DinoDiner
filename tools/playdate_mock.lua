@@ -13,6 +13,7 @@ M.docked = false
 M.played = {}         -- log of sample names started
 M.playing = {}        -- name -> frames left
 M.frame = 0
+M.saved = {}          -- playdate.datastore contents
 
 local function rec(...) M.ops[#M.ops + 1] = { ... } end
 
@@ -48,15 +49,17 @@ Image.__index = Image
 function Image:draw(x, y) rec("image", self.path, x, y) end
 function Image:getSize() return self.width, self.height end
 
-gfx.image = {}
+gfx.image = { kDitherTypeBayer2x2 = "bayer2x2" }
 function gfx.image.new(path)
+    M.images = M.images or {}
+    M.images[path] = true
     local w, h = pngSize(M.source .. path .. ".png")
     if not w then return nil end
     return setmetatable({ path = path, width = w, height = h }, Image)
 end
 for _, name in ipairs({ "setColor", "setLineWidth", "setImageDrawMode", "fillRect",
     "fillRoundRect", "drawRoundRect", "fillTriangle", "drawLine", "fillCircleAtPoint",
-    "drawCircleAtPoint", "drawTextAligned", "clear" }) do
+    "drawCircleAtPoint", "drawTextAligned", "clear", "setDitherPattern" }) do
     gfx[name] = function(...) rec(name, ...) end
 end
 
@@ -82,6 +85,10 @@ playdate = {
     ui = { crankIndicator = { draw = function() rec("crankIndicator") end } },
     kButtonA = "a", kButtonB = "b", kButtonUp = "up", kButtonDown = "down",
     kButtonLeft = "left", kButtonRight = "right",
+    datastore = {
+        read = function(name) return M.saved[name or "data"] end,
+        write = function(t, name) M.saved[name or "data"] = t end,
+    },
     getSecondsSinceEpoch = function() return 12345 end,
     getCrankTicks = function() local t = M.ticks; M.ticks = 0; return t end,
     isCrankDocked = function() return M.docked end,
