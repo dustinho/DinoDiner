@@ -30,6 +30,7 @@ local img = {
     aButton = loadImage("images/a_button"),
     aButtonBig = loadImage("images/a_button_big"),
     times = loadImage("images/numbers/times"),
+    equals = loadImage("images/numbers/equals"),
     trex = {},
     num = {},
     numSmall = {},
@@ -180,6 +181,11 @@ local function drawTotal(g)
     local hop = 0
     if g.changed and g.frame - g.changed < 4 then hop = 4 - (g.frame - g.changed) end
     drawInk(img.num[math.min(n, 25)], x + w // 2, y + h // 2 - hop, matched)
+    -- multiplying reads as a sentence: [dino] 3 x [berry] 4 = 12
+    if g.mode == "multiply" then
+        local b = g:layout().bubble
+        drawCentered(img.equals, (b.x + b.w + x) // 2, y + h // 2)
+    end
 end
 
 ---------------------------------------------------------------- grid

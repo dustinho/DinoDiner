@@ -52,6 +52,7 @@ for n in range(0, 26):
 for n in range(1, 6):
     check_png("images/numbers/num_s_%d" % n)
 check_png("images/numbers/times")
+check_png("images/numbers/equals")
 friends = re.findall(r'"(\w+)"', re.search(r"Game.FRIENDS = \{([^}]*)\}", game).group(1))
 for name in ["trex"] + friends:
     for pose in ("idle", "chomp", "happy"):

@@ -48,6 +48,8 @@ Simulator.
 | 19 | In Counting, the tray sat about 90 px below its total. | Tray raised to just under the total and moved right to clear the T-Rex's "!" marks. |
 | 20 | A narrow multiplying grid left no room for the prompt between the bubble and the total. | Prompt has a fixed spot under the bubble, above the T-Rex's "!" marks. A test checks it clears both boxes. |
 
+| 21 | In Multiplying, the request and total sat side by side, but nothing said they were two halves of one equation. | An **=** sign sits on the shared line, centred between the bubble and the total: [dino] 3 × [berry] 4 = 12. A test checks there's room for it at every row width. |
+
 ### Still open
 
 - **Big T-Rex vs. grid in Multiplying:** the host takes the left 40% of

@@ -68,7 +68,8 @@ twice in a row.
 ## Multiplying (dino party)
 
 1. The T-Rex invites friends: *"I invited two friends! We each want three
-   strawberries!"* The bubble shows **[dino] 3 × [berry] 3**.
+   strawberries!"* The bubble shows **[dino] 3 × [berry] 3**, then
+   an **=** sign and the total box, so the top row reads as a sentence.
 2. The friends walk in, one per row: a mini T-Rex, plus a triceratops,
    stegosaurus, brachiosaurus or ankylosaurus. Each row of the grid is as
    many cells wide as each dino wants.

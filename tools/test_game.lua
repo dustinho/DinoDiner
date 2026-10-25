@@ -513,6 +513,10 @@ test("running total badge: tray count, eaten count, then the whole amount", func
         local last = h:cellPos(mode == "count" and 5 or h.each)
         local berriesMid = (first + last + 30) / 2
         check(math.abs((x + w / 2) - berriesMid) <= 2, label .. ": centred over the berries")
+        if mode == "multiply" then
+            -- room for the "=" (about 18 px wide) between bubble and total
+            check(x - (b.x + b.w) >= 26, label .. ": room for the equals sign")
+        end
         local p = Layout[mode].prompt
         check(not overlaps(p.x - 17, p.y - 17, 34, 34, x, y, w, ht), label .. ": prompt clear of total")
         check(not overlaps(p.x - 17, p.y - 17, 34, 34, b.x, b.y, b.w, b.h), label .. ": prompt clear of bubble")
