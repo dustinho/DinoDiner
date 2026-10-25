@@ -1,4 +1,4 @@
-# Dino Diner (Playdate)
+# Dino Diner (Playdate) — v1.5
 
 A gentle counting and early-multiplication game for preschoolers (ages 3–5).
 A hungry baby T-Rex asks for strawberries. The child turns the **crank** to
@@ -7,6 +7,21 @@ lives, score or game over. Mistakes get a spoken hint and the child can try
 again.
 
 ![Gameplay previews](preview/contact_sheet.png)
+
+## What's new in 1.5
+
+- **Multiplying game ("dino party"):** the T-Rex invites 1–4 friends
+  (triceratops, stegosaurus, brachiosaurus, ankylosaurus). Each dino owns a
+  row, the crank fills the grid row by row, dinos eat row by row while the
+  voice skip-counts, then the fact is spoken.
+- **Selectable difficulty:** choose Counting or Multiplying and level 1–3
+  on the title screen. The choice and unlocked levels are saved.
+- **Grid display:** strawberries fill a 2×5 grid (Counting) or one row per
+  dino (Multiplying) instead of the bowl, to build spatial number sense.
+- **Running total:** a badge in the top-right shows how many strawberries
+  are on the tray and turns black when it matches the request (top-left).
+- New cleaner party-dino sprites, 50 new voice lines, smaller request
+  numerals.
 
 ## Choosing a game (title screen)
 
@@ -96,7 +111,7 @@ device.
 source/
   main.lua          Playdate front end: input, audio, saving, drawing
   game.lua          game rules and state machine (no SDK calls; unit-tested)
-  pdxinfo           metadata (v1.4)
+  pdxinfo           metadata (version 1.5, build 15)
   images/           1-bit PNG sprites, backgrounds, numerals
   images/friends/   the party dinos (46x40, idle / chomp / happy)
   sounds/           speech + effects (mono 16-bit PCM WAV, 22 kHz)
@@ -169,7 +184,7 @@ See [DESIGN_REVIEW.md](DESIGN_REVIEW.md) for the latest design review.
 
 **Verified here:**
 
-- Lua logic and `main.lua` run under Lua 5.4 against a mocked SDK. All 16
+- Lua logic and `main.lua` run under Lua 5.4 against a mocked SDK. All 26
   tests pass.
 - Every asset passes `check_assets.py`.
 - Screen layouts were checked with the draw-call renderer.
@@ -186,8 +201,9 @@ used in the A button.
 
 ## Known gaps / next steps
 
-- Save progress (`playdate.datastore`) and add a parent menu (difficulty,
-  voice on/off) through the System Menu.
+- Voice on/off and other parent options (e.g. through the System Menu).
+- Extract the party dinos from the reference sheet once it's in the repo
+  (`tools/reference/friends.png`).
 - Professional voice recording, music.
-- The original v1.4 archive was not available, so this is a fresh
-  implementation of the v1.4 spec.
+- v1.4 was a fresh implementation of the v1.4 spec, because the original
+  archive was not available.
