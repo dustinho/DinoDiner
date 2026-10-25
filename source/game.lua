@@ -477,8 +477,10 @@ function Game:updateFeeding()
             self.feedTimer = 0
             self.audio:sfx("whoosh")
         elseif self.mode == "multiply" and self.feedTimer >= Game.ROW_INTERVAL then
+            -- bottom row first: each dino eats the berries in its own row,
+            -- and the tray empties from the bottom up
             self.rowsLaunched = self.rowsLaunched + 1
-            local r = self.rowsLaunched
+            local r = self.groups - self.rowsLaunched + 1
             for i = (r - 1) * self.each + 1, r * self.each do launch(self, i, r) end
             self.count = self.count - self.each
             self.feedTimer = 0
@@ -551,8 +553,9 @@ end
 function Game:friendPose(r)
     if self.state == "celebrate" then return "happy" end
     if self.state == "feeding" then
-        if r <= self.rowsEaten then return "happy" end
-        if r == self.rowsLaunched then return "chomp" end
+        -- rows are eaten bottom-up
+        if r > self.groups - self.rowsEaten then return "happy" end
+        if r == self.groups - self.rowsLaunched + 1 then return "chomp" end
         return "idle"
     end
     return self.count >= r * self.each and "happy" or "idle"

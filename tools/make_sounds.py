@@ -83,6 +83,22 @@ for i, w in enumerate(WORDS, 1):
             w, "strawberry" if i == 1 else "strawberries")
 
 
+# Kokoro's mispronunciations, fixed in the phonemes: (wrong, right).
+PRONUNCIATION_FIXES = [
+    ("dˈiːnoʊ", "dˈaɪnoʊ"),    # "dee-no" -> "die-no", as in dinosaur
+    ("diːnoʊ", "daɪnoʊ"),
+    ("pɹˈɛs ɐ", "pɹˈɛs ˈeɪ"),  # "press uh" -> "press A" (the button)
+]
+
+
+def fix_pronunciation(ph):
+    for wrong, right in PRONUNCIATION_FIXES:
+        ph = ph.replace(wrong, right)
+    for wrong, _ in PRONUNCIATION_FIXES:
+        assert wrong not in ph, "unfixed pronunciation %r in %r" % (wrong, ph)
+    return ph
+
+
 # ---------------------------------------------------------------- model fetch
 def npm_tarball(pkg, version):
     url = "https://registry.npmjs.org/%s/-/%s-%s.tgz" % (pkg, pkg, version)
@@ -153,10 +169,12 @@ def speech(only=None):
         if only and name not in only:
             continue
         speed = 0.95 if name.startswith(("count_", "request_")) else 1.0
+        raw = k.tokenizer.phonemize(text.replace("{hum}", "").strip(), "en-us")
+        ph = fix_pronunciation(raw)
         if "{hum}" in text:
-            rest = k.tokenizer.phonemize(text.replace("{hum}", "").strip(), "en-us")
-            s, sr = k.create(HUM + " " + rest, voice=VOICE, speed=speed,
-                             lang="en-us", is_phonemes=True)
+            ph = HUM + " " + ph
+        if ph != raw:
+            s, sr = k.create(ph, voice=VOICE, speed=speed, lang="en-us", is_phonemes=True)
         else:
             s, sr = k.create(text, voice=VOICE, speed=speed, lang="en-us")
         # pitch up without changing tempo, then soften the top end a touch
