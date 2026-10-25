@@ -27,6 +27,8 @@ Game.CURIOUS_FRAMES = 75    -- how long the "hmm?" face / hint blink lasts
 Game.NUDGE_FRAMES = 180     -- idle frames before a gentle spoken reminder
 Game.ARRIVE_FRAMES = 14     -- frames for a friend to walk in
 Game.POINTS_TO_ADVANCE = 3
+Game.REVEAL_FRAMES = 4      -- frames between berries appearing after lock-in
+Game.REVEAL_PAUSE = 12      -- beat after the last berry before checking
 
 Game.MODES = { "count", "multiply" }
 
@@ -37,14 +39,17 @@ Game.LEVELS = {
     count = {
         { max = 3,  intro = { 1, 2, 3 } },
         { max = 5,  intro = { 4, 5 } },
-        { max = 10, intro = { 6, 7, 8, 9, 10 } },
+        { max = 10, intro = { 6, 7, 8, 9, 10 }, lockIn = true },
     },
     multiply = {
         { groups = { 2, 2 }, each = { 1, 3 } },
         { groups = { 2, 3 }, each = { 1, 4 } },
-        { groups = { 2, 5 }, each = { 1, 5 } },
+        { groups = { 2, 5 }, each = { 1, 5 }, lockIn = true },
     },
 }
+-- lockIn levels: the crank only picks a number (shown in the total box);
+-- the strawberries fill the grid after A locks the choice in.  Anything
+-- that would give the answer away waits until then.
 
 Game.FRIENDS = { "triceratops", "stegosaurus", "brachiosaurus", "ankylosaurus" }
 
@@ -250,13 +255,37 @@ function Game:startRound(a, b)
     self.roundFrames = 0
     self.pops, self.poofs, self.flying = {}, {}, {}
     self.blinkTimer = 60 + self.random(0, 60)
+    self.lockIn = Game.LEVELS[self.mode][self:level()].lockIn == true
+    self.revealed = false
+    self.revealing = nil
+    local intro = {}
     if not self.taught[self.mode] then
         self.taught[self.mode] = true
-        self:say(self.mode == "count" and "instructions" or "share_intro")
+        intro[#intro + 1] = self.mode == "count" and "instructions" or "share_intro"
+    end
+    if self.lockIn and not self.taught.lockIn then
+        self.taught.lockIn = true
+        intro[#intro + 1] = "lockin_intro"
+    end
+    if #intro > 0 then
+        self:say(intro[1])
+        for i = 2, #intro do self:sayNext(intro[i]) end
         self:sayRequest(true)
     else
         self:sayRequest()
     end
+end
+
+-- Lock-in levels: true while the berries are still hidden (before A, and
+-- while they are popping in after A).
+function Game:hidden()
+    return self.state == "play" and self.lockIn and not self.revealed
+end
+
+-- How many berries are drawn on the tray right now.
+function Game:visibleCount()
+    if self:hidden() then return self.revealing and self.revealing.shown or 0 end
+    return self.count
 end
 
 -- Apply round result to adaptive progression (called when the child
@@ -336,6 +365,7 @@ function Game:queueSteps(n)
 end
 
 function Game:updatePlay(input)
+    if self.revealing then return self:updateReveal() end
     local steps = input.ticks or 0
     if input.up then steps = steps + 1 end
     if input.down or input.b then steps = steps - 1 end
@@ -374,7 +404,14 @@ function Game:updatePlay(input)
 
     if self.pending == 0 and self.feedQueued then
         self.feedQueued = false
-        self:evaluate()
+        if self:hidden() and self.count > 0 then
+            -- lock in: now show the berries, then check
+            self.revealing = { shown = 0, t = 0 }
+            self.announced = self.count
+            self.voiceQueue = {}
+        else
+            self:evaluate()
+        end
         return
     end
 
@@ -392,7 +429,7 @@ function Game:updatePlay(input)
             self.idle = 0
             self:say("hint_empty")
         elseif self.count == self.target and self.idle >= Game.NUDGE_FRAMES / 2
-            and not self.readyNudged then
+            and not self.readyNudged and not self:hidden() then
             self.readyNudged = true
             self:say("hint_ready")
         end
@@ -404,6 +441,24 @@ function Game:updatePlay(input)
     end
     self.blinkTimer = self.blinkTimer - 1
     if self.blinkTimer < -4 then self.blinkTimer = 60 + self.random(0, 90) end
+end
+
+-- After lock-in: berries pop onto the tray one by one, a short beat,
+-- then the answer is checked.  The grid stays visible for the rest of the
+-- round, so a wrong answer can be fixed by looking.
+function Game:updateReveal()
+    local r = self.revealing
+    r.t = r.t + 1
+    if r.shown < self.count and r.t >= Game.REVEAL_FRAMES then
+        r.shown = r.shown + 1
+        r.t = 0
+        self.pops[r.shown] = self.frame
+        self.audio:sfx("pop")
+    elseif r.shown == self.count and r.t >= Game.REVEAL_PAUSE then
+        self.revealing = nil
+        self.revealed = true
+        self:evaluate()
+    end
 end
 
 function Game:evaluate()
@@ -546,7 +601,9 @@ function Game:pose()
     end
     if self.state == "celebrate" then return "happy" end
     if self.curious > 0 then return "curious" end
-    if self.count == self.target and self.pending == 0 then return "excited" end
+    if self.count == self.target and self.pending == 0 and not self:hidden() then
+        return "excited"
+    end
     if self.blinkTimer < 0 then return "blink" end
     return "idle"
 end
@@ -560,6 +617,7 @@ function Game:friendPose(r)
         if r == self.groups - self.rowsLaunched + 1 then return "chomp" end
         return "idle"
     end
+    if self:hidden() then return "idle" end
     return self.count >= r * self.each and "happy" or "idle"
 end
 
@@ -583,7 +641,7 @@ end
 function Game:shownTotal()
     if self.state == "feeding" then return self.eaten, false end
     if self.state == "celebrate" then return self.target, true end
-    return self.count, self.count == self.target and self.pending == 0
+    return self.count, self.count == self.target and self.pending == 0 and not self:hidden()
 end
 
 -- Gentle blinking after a wrong answer: true on the "off" half of a blink.

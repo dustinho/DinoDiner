@@ -48,7 +48,9 @@ Simulator.
 | 19 | In Counting, the tray sat about 90 px below its total. | Tray raised to just under the total and moved right to clear the T-Rex's "!" marks. |
 | 20 | A narrow multiplying grid left no room for the prompt between the bubble and the total. | Prompt has a fixed spot under the bubble, above the T-Rex's "!" marks. A test checks it clears both boxes. |
 
-| 21 | In Multiplying, the request and total sat side by side, but nothing said they were two halves of one equation. | An **=** sign sits on the shared line, centred between the bubble and the total: [dino] 3 × [berry] 4 = 12. A test checks there's room for it at every row width. |
+| 21 | In Multiplying, the request and total sat side by side, but nothing said they were two halves of one equation. | An **=** sign sits on the shared line: [dino] 3 × [berry] 4 = 12. A test checks there's room for it at every row width. |
+| 22 | A permanent "=" made a partial tray read as a false statement ("3 × 4 = 6"). | The "=" only appears once the total is right. It's bigger (23×17) and sits right next to the total. |
+| 23 | At the top level, watching the grid fill made the answer a matter of "fill the shape" rather than working it out. | **Lock-in on level 3:** the crank picks a number, then A reveals the berries one by one and checks. Every give-away (black total, "=", excited T-Rex, smiling friends, empty slots in Multiplying, "just right" nudge) waits until after lock-in. After a wrong answer the grid stays visible so it can be fixed by looking. |
 
 ### Still open
 

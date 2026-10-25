@@ -318,7 +318,7 @@ def make_numbers():
     for n in range(1, 6):
         ink(str(n), 36, "num_s_%d" % n)
     ink("×", 26, "times")
-    ink("=", 30, "equals")
+    ink("=", 46, "equals")
 
 
 # ---------------------------------------------------------------- hearts

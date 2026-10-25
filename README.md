@@ -18,6 +18,8 @@ again.
   on the title screen. The choice and unlocked levels are saved.
 - **Grid display:** strawberries fill a 2×5 grid (Counting) or one row per
   dino (Multiplying) instead of the bowl, to build spatial number sense.
+- **Lock-in on level 3:** pick a number first, then press A to see the
+  strawberries fill the grid.
 - **Running total:** a box centred over the strawberries shows how many
   are on the tray and turns black when it matches the request. It sits on
   the same line as the request bubble (top-left).
@@ -40,6 +42,16 @@ The chosen game and levels are **saved** between sessions.
 | 1 | 1–3 | 2 dinos × 1–3 |
 | 2 | 1–5 | 2–3 dinos × 1–4 |
 | 3 | 1–10 | 2–5 dinos × 1–5 (up to 25) |
+
+**Level 3 is "lock-in"** in both games. Turning the crank only picks a
+number, which shows in the total box. The tray stays empty, and in
+Multiplying the empty slots are hidden too. Press **A** to lock the number
+in: the strawberries pop onto the grid one by one, then the answer is
+checked. Until then nothing gives the answer away: the total doesn't turn
+black, there's no "=", and the dinos don't react. After a wrong answer the
+grid stays visible for the rest of the round, so the child can see what to
+fix. The first time, the dino explains the rule. Lock-in is a per-level
+setting (`lockIn` in `Game.LEVELS`).
 
 Within a game, levels also unlock automatically. A first-try success is
 worth 1 point, a corrected one 0.5, and 3 points move up a level. The new
@@ -68,8 +80,9 @@ twice in a row.
 ## Multiplying (dino party)
 
 1. The T-Rex invites friends: *"I invited two friends! We each want three
-   strawberries!"* The bubble shows **[dino] 3 × [berry] 3**, then
-   an **=** sign and the total box, so the top row reads as a sentence.
+   strawberries!"* The bubble shows **[dino] 3 × [berry] 3**. When
+   the total is right, an **=** appears before it, so the top row reads as
+   a sentence: 3 × 3 = 9.
 2. The friends walk in, one per row: a mini T-Rex, plus a triceratops,
    stegosaurus, brachiosaurus or ankylosaurus. Each row of the grid is as
    many cells wide as each dino wants.
@@ -135,7 +148,7 @@ Game states: `title` → `play` → `feeding` → `celebrate` → `play` …
 ## Tests
 
 ```sh
-lua5.4 tools/test_game.lua preview/frames     # 25 tests; dumps draw calls
+lua5.4 tools/test_game.lua preview/frames     # 32 tests; dumps draw calls
 python3 tools/render_preview.py preview/frames preview
 python3 tools/check_assets.py
 ```
@@ -186,7 +199,7 @@ See [DESIGN_REVIEW.md](DESIGN_REVIEW.md) for the latest design review.
 
 **Verified here:**
 
-- Lua logic and `main.lua` run under Lua 5.4 against a mocked SDK. All 26
+- Lua logic and `main.lua` run under Lua 5.4 against a mocked SDK. All 32
   tests pass.
 - Every asset passes `check_assets.py`.
 - Screen layouts were checked with the draw-call renderer.

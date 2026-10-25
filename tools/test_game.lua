@@ -353,6 +353,89 @@ test("saved settings are restored; junk is ignored", function()
     eq(g3.mode, "count")
 end)
 
+---------------------------------------------------------------- lock-in levels
+local function lockInGame(mode)
+    local g, audio = newGame()
+    g.mode = mode or "count"
+    g.levels[g.mode] = 3
+    g.taught[g.mode] = true
+    return g, audio
+end
+
+test("lock-in only on level 3", function()
+    for _, mode in ipairs(Game.MODES) do
+        for level = 1, 3 do
+            local g = newGame()
+            g.mode = mode
+            g.taught[mode] = true
+            g.levels[mode] = level
+            g:startRound()
+            eq(g.lockIn, level == 3, mode .. " level " .. level)
+        end
+    end
+end)
+
+test("lock-in: berries stay hidden and nothing gives the answer away", function()
+    local g, audio = lockInGame()
+    g:startRound(6)
+    eq(audio.voices[#audio.voices], "lockin_intro", "rule explained first time")
+    step(g, { ticks = 6 })
+    run(g, 200)
+    eq(g.count, 6)
+    eq(g:visibleCount(), 0, "no berries on the tray yet")
+    local n, matched = g:shownTotal()
+    eq(n, 6, "the chosen number is shown")
+    eq(matched, false, "total doesn't turn black")
+    check(g:pose() ~= "excited", "T-Rex doesn't react to the right number")
+    check(not contains(audio.voices, "hint_ready"), "no 'just right' nudge")
+end)
+
+test("lock-in: A reveals berries one by one, then checks", function()
+    local g, audio = lockInGame()
+    g:startRound(4)
+    step(g, { ticks = 4 })
+    run(g, 20)
+    step(g, { a = true })
+    check(g.revealing, "revealing")
+    local seen = {}
+    for _ = 1, 60 do
+        seen[#seen + 1] = g:visibleCount()
+        if g.state ~= "play" then break end
+        step(g)
+    end
+    for i = 2, #seen do check(seen[i] - seen[i - 1] <= 1, "one berry at a time") end
+    eq(g.state, "feeding", "correct answer feeds")
+end)
+
+test("lock-in: a wrong answer stays revealed so it can be fixed", function()
+    local g, audio = lockInGame("multiply")
+    g:startRound(3, 2)
+    step(g, { ticks = 4 })
+    run(g, 20)
+    step(g, { a = true })
+    check(runUntil(g, function() return g.hint ~= nil end, 100), "checked")
+    eq(g.hint, "more")
+    eq(g.mistakes, 1)
+    eq(g:visibleCount(), 4, "berries visible after the check")
+    eq(g:hidden(), false)
+    step(g, { ticks = 2 })
+    run(g, 10)
+    eq(g:visibleCount(), 6, "new berries show straight away")
+    local _, matched = g:shownTotal()
+    eq(matched, true, "and the total can turn black now")
+    step(g, { a = true })
+    eq(g.state, "feeding", "no second reveal")
+end)
+
+test("lock-in: empty tray still gets the gentle hint", function()
+    local g, audio = lockInGame()
+    g:startRound(5)
+    run(g, 5)
+    step(g, { a = true })
+    eq(audio.voices[#audio.voices], "hint_empty")
+    eq(g.revealing, nil)
+end)
+
 ---------------------------------------------------------------- multiplying
 local function multiplyGame(seq)
     local g, audio = newGame(seq)
@@ -642,6 +725,21 @@ test("main.lua runs every state against the Playdate mock", function()
     mock.step({ a = true })
     frames(5)
     snap("20_multiply_too_many")
+    -- lock-in level: number chosen, berries hidden; then revealed
+    g.levels.multiply = 3
+    g:startRound(3, 3)
+    mock.step({ ticks = 9 })
+    frames(60)
+    snap("21_lockin_hidden")
+    mock.step({ a = true })
+    frames(20)
+    snap("22_lockin_revealing")
+    g.mode = "count"
+    g.levels.count = 3
+    g:startRound(7)
+    mock.step({ ticks = 7 })
+    frames(60)
+    snap("23_lockin_count_hidden")
     check(mock.saved.settings and mock.saved.settings.mode == "multiply", "settings saved")
     check(#mock.played > 0, "sounds played")
 end)

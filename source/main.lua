@@ -181,10 +181,10 @@ local function drawTotal(g)
     local hop = 0
     if g.changed and g.frame - g.changed < 4 then hop = 4 - (g.frame - g.changed) end
     drawInk(img.num[math.min(n, 25)], x + w // 2, y + h // 2 - hop, matched)
-    -- multiplying reads as a sentence: [dino] 3 x [berry] 4 = 12
-    if g.mode == "multiply" then
-        local b = g:layout().bubble
-        drawCentered(img.equals, (b.x + b.w + x) // 2, y + h // 2)
+    -- once it's right, multiplying reads as a sentence: [dino] 3 x [berry] 4 = 12
+    if g.mode == "multiply" and matched then
+        local ew = img.equals:getSize()
+        drawCentered(img.equals, x - 6 - ew // 2, y + h // 2)
     end
 end
 
@@ -235,13 +235,15 @@ local function drawTray(g)
         for r = 1, g.groups do
             local y = L.y + (r - 1) * L.dy
             drawLightMat(L.x - 3, y - 1, g.each * L.dx + 6, L.dy)
-            for c = 0, g.each - 1 do drawCell(L.x + c * L.dx, y, L.dx, L.dy) end
+            if not g:hidden() then   -- empty slots would let you count the answer
+                for c = 0, g.each - 1 do drawCell(L.x + c * L.dx, y, L.dx, L.dy) end
+            end
         end
     end
 end
 
 local function drawBerries(g)
-    for i = 1, g.count do
+    for i = 1, g:visibleCount() do
         local x, y = g:cellPos(i)
         local popped = g.pops[i]
         if g.state == "play" and popped and g.frame - popped < #POP_OFFSET then
@@ -259,8 +261,9 @@ local function drawBerries(g)
             img.berry:draw(x, y)
         end
     end
-    -- a small "poof" where a berry was taken out
+    -- a small "poof" where a berry was taken out (not while they're hidden)
     gfx.setColor(gfx.kColorBlack)
+    if g:hidden() then return end
     for _, p in ipairs(g.poofs) do
         local x, y = g:cellPos(p.i)
         x, y = x + 15, y + 16
@@ -289,8 +292,15 @@ end
 ---------------------------------------------------------------- scene
 local function drawPlayHints(g)
     local p = g:layout().prompt
-    if g.state ~= "play" then return end
-    if g.count == g.target and g.pending == 0 then
+    if g.state ~= "play" or g.revealing then return end
+    if g:hidden() then
+        -- lock-in levels: A whenever there's a number to lock in
+        if g.count > 0 and g.pending == 0 then
+            drawAButton(p.x, p.y, (g.frame // 8) % 2 == 1)
+        else
+            drawCrankIcon(p.x, p.y, g.frame, 1)
+        end
+    elseif g.count == g.target and g.pending == 0 then
         drawAButton(p.x, p.y, (g.frame // 8) % 2 == 1)
     elseif g.idle > 45 or g.count == 0 then
         drawCrankIcon(p.x, p.y, g.frame, g.count > g.target and -1 or 1)

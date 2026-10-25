@@ -61,7 +61,7 @@ effects = re.search(r"EFFECTS = \{(.*?)\}", main, re.S).group(1)
 for name in re.findall(r'"([^"]+)"', effects):
     check_wav("sounds/" + name)
 # every voice line game.lua can ask for
-voices = ["title", "instructions", "share_intro", "hint_empty", "hint_more", "hint_less",
+voices = ["title", "instructions", "share_intro", "lockin_intro", "hint_empty", "hint_more", "hint_less",
           "hint_ready", "again", "mode_count", "mode_multiply"]
 voices += ["yum_%d" % i for i in range(1, 4)] + ["level_%d" % i for i in range(1, 4)]
 voices += ["count_%d" % i for i in range(1, 26)] + ["request_%d" % i for i in range(1, 11)]

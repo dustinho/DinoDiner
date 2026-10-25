@@ -60,6 +60,8 @@ WORDS += ["eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
 SPEECH.update({
     "share_intro": "Let's have a dino party! Every dino gets its own row. "
                    "Give each dino the same number of strawberries!",
+    "lockin_intro": "Ooh, now it's tricky! Turn the crank to pick a number. "
+                    "Then press A, and we'll see the strawberries!",
     "mode_count": "Counting!",
     "mode_multiply": "Dino party! Multiplying!",
     "level_1": "Level one!",
