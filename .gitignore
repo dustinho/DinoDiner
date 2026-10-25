@@ -1,0 +1,3 @@
+*.pdx/
+__pycache__/
+preview/frames/

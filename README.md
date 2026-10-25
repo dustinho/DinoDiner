@@ -1,54 +1,145 @@
-# Dino Diner v1.2 — Playdate
+# Dino Diner (Playdate)
 
-A gentle counting game for a preschooler. Help a friendly **T-Rex eat 1–10 berries** using the Playdate crank. Designed for children who cannot read yet.
+A gentle counting game for preschoolers (ages 3–5). A hungry baby T-Rex asks
+for 1–10 strawberries. The child turns the **crank** to put strawberries in
+the bowl, then presses **A** to feed it. No timers, lives, score or game
+over. Mistakes get a spoken hint and the child can try again.
 
-## Play
+![Gameplay previews](preview/contact_sheet.png)
 
-1. Press **A** to start. The voice explains how to play and asks for a number of berries.
-2. Turn the **crank clockwise** to add berries; turn backwards to take berries away. Each berry appears in its own spot in the bowl, with a pop. After turning slows, the voice says the current total.
-3. Press **A** to feed the T-Rex. Berries fly from the bowl into its mouth, with chewing sounds. A mismatch gives spoken guidance, never a loss or time penalty.
-4. Press **A** after the celebration to start another round. The game *does not* advance on its own.
+## How to play
 
-Numbers are introduced 1–3, then 4–5, then 6–10, before mixing all ten. Corrected answers count toward unlocking new numbers, but more slowly than first-try answers. Counting uses a consistent 2×5 arrangement, with no target-dot overlays.
+1. Press **A** on the title screen. On the first round the dino explains
+   how to play, then asks for a number. The bubble shows a big numeral, and
+   dotted strawberry outlines show how many it wants.
+2. Turn the **crank forward** to add strawberries and **backward** to take
+   them out. Each berry pops in by itself with a sound, and fills one of the
+   dotted outlines. Once the crank stops, the voice says the total.
+3. When the count matches, the dino gets excited and a pulsing **A** button
+   appears. Press **A**. Berries fly into its mouth one at a time while the
+   voice counts along. Then it chews and celebrates.
+4. Wrong count? The dino tilts its head with a "?" and says *"I need more"*,
+   *"That's too many"* or *"The bowl is empty"*. The missing or extra berries
+   flash, and extra berries are drawn dark.
+5. After the celebration, press **A** for the next round. The game never
+   moves on by itself.
 
-| Control | Action |
+| Input | Action |
 |---|---|
-| Crank clockwise/counterclockwise | Add/remove berries |
-| A | Start, feed, or advance after celebration |
-| B / D-pad down | Remove a berry |
-| D-pad up | Add a berry, no crank necessary |
-| D-pad right | Repeat the spoken request |
+| Crank clockwise / counter-clockwise | Add / remove strawberries (10 per turn) |
+| A | Start, feed, next round after the celebration |
+| B or D-pad down | Remove one strawberry |
+| D-pad up | Add one strawberry |
+| D-pad right | Hear the request again |
 
-A press of **A** while a fast crank turn is still being animated is held until the pending berries are in the bowl. This avoids evaluating a partial count.
+When the crank is docked, the SDK's crank indicator is shown. The D-pad
+controls work without the crank.
+
+### Learning progression
+
+| Stage | Numbers | Unlocks |
+|---|---|---|
+| 1 | 1–3 | start |
+| 2 | 1–5 | after 3 points |
+| 3 | 1–10 | after 3 more points |
+
+New numbers are introduced in order (1, 2, 3, then 4, 5, then 6–10). After
+that, targets are random within the stage and never the same twice in a
+row. A first-try success is worth 1 point, a corrected one 0.5. Progress is
+applied when A is pressed after the celebration. It is **not saved**:
+restarting the game starts at stage 1.
 
 ## Build
 
-The archive is **source code, not a sideload-ready game**. Install the official [Playdate SDK](https://play.date/dev/) for your platform, then in the `DinoDiner` folder run:
+You need the official [Playdate SDK](https://play.date/dev/).
 
 ```sh
-pdc source DinoDiner.pdx
+./build.sh          # or build.bat on Windows; runs: pdc source DinoDiner.pdx
 ```
 
-Load the generated `DinoDiner.pdx` folder in the Playdate Simulator. To use a physical device, transfer the compiled game with the Simulator or zip the compiled `.pdx` directory for the [Playdate sideload page](https://play.date/account/sideload/).
+Open `DinoDiner.pdx` in the Playdate Simulator, or sideload it to a
+device.
 
-The Playdate SDK and Simulator were **not available in the build environment** that created v1.1. Gameplay was run with a mocked Playdate API using Lua, and visuals were checked through a draw-call renderer, but there is no claim of an SDK compile, Simulator run, or physical-device acceptance test.
+## Project layout
 
-## Tests and assets
+```text
+source/
+  main.lua          Playdate front end: input, audio, drawing
+  game.lua          game rules and state machine (no SDK calls; unit-tested)
+  pdxinfo           metadata (v1.4)
+  images/           1-bit PNG sprites, backgrounds, numerals
+  sounds/           speech + effects (mono 16-bit PCM WAV, 22 kHz)
+  launcher/         card.png (350x155), icon.png (32x32)
+tools/
+  test_game.lua     logic tests + main.lua smoke test against a mocked SDK
+  playdate_mock.lua minimal Playdate API mock that records draw calls
+  render_preview.py renders recorded draw calls to PNG previews
+  check_assets.py   checks every asset main.lua loads (1-bit, sizes, WAV format)
+  make_art.py       regenerates all art from tools/reference/mockup.png
+  make_sounds.py    regenerates speech (espeak-ng) and effects
+  reference/        art-direction mockup
+preview/            rendered screens (from the mock, not the Simulator)
+```
 
-- `source/main.lua`: game logic, rendering, crank handling, and sound.
-- `source/images`: seven expressive T-Rex poses, true strawberry pixel sprites, logo, and numeral art.
-- `source/sounds`: synthetic English speech plus short berry/chew effects; pre-generated and bundled.
-- `tools/test_game.lua`: no-SDK deterministic gameplay and audio regression tests.
-- `tools/capture.lua` and `tools/render_preview.py`: layout renderer based on the game's actual draw calls, not a Playdate Simulator screenshot.
-- `tools/check_assets.py`: verifies PNG dimensions and all WAV sound files.
-- `tools/make_assets.py`: optional logo, number art, speech, and sprite regeneration.
-- `tools/make_creature_sprites.py`: deterministic 1-bit character and strawberry sprite generation (Pillow and CairoSVG). Requires Pillow, CairoSVG, espeak, and ffmpeg; bundled assets make it unnecessary for ordinary builds.
-- `DESIGN_REVIEW.md`: findings, fix rounds, checks, and remaining verification risks.
+Game states: `title` → `play` → `feeding` → `celebrate` → `play` …
 
-You can run the behavior tests with `lua tools/test_game.lua source/main.lua` or `texlua --luaonly tools/test_game.lua source/main.lua`. For visual checks use `python tools/render_preview.py` and `python tools/check_assets.py` (Pillow required). On Windows, install those tools separately only if you want to regenerate or test the source; **they are not necessary to build with `pdc`**.
+## Tests
 
-To replace the computer-generated voice, record replacements for the WAV files using the same names, preferably mono ADPCM WAV at 22050 Hz.
+```sh
+lua5.4 tools/test_game.lua preview/frames     # 16 tests; dumps draw calls
+python3 tools/render_preview.py preview/frames preview
+python3 tools/check_assets.py
+```
 
-## Visual art update (v1.2)
+The tests cover:
 
-The baby T-Rex is now drawn as seven registration-matched poses: idle, blink, excited, curious, chomp, chew, and happy. All original sprites use hard 1-bit pixels and fit the existing 204×166 sprite bounds. The strawberries are distinct 26×26 seeded fruit with a pointed bottom and leafy crown, rather than generic round berries. The small fruit is used in the bowl and flying feed animation; the 104×104 enlarged copy is provided for asset inspection. Visual review files include `asset-review-sprites.png` and `preview-ten.png`. These previews were rendered by a draw-call harness, **not** the official Playdate Simulator.
+- feeding every quantity from 1 to 10
+- fast cranking: one berry per step, capped at 10 and never below 0
+- pressing A while crank steps are still queued
+- when counts are spoken (no flood of numbers)
+- the hints for too few, too many and an empty bowl, and recovering from them
+- idle reminders
+- the celebration waiting for A
+- progression order
+- layout bounds
+- a full run of `main.lua` through every state against the SDK mock
+
+## Art and audio
+
+- The **T-Rex poses** (idle, blink, excited, curious, chomp, chew, happy),
+  both **backgrounds** and the **bowl** are taken from the mockup in
+  `tools/reference/` and converted to 1-bit pixels at native resolution.
+  Blink and chomp reuse the idle and excited bodies with the eyes closed, so
+  the frames line up without jitter.
+- **Strawberries** (30×32 in the bowl, 18×19 for goal slots, plus a dotted
+  outline), **hearts** and **numerals** are drawn by `make_art.py`.
+- **Speech** is synthesized with espeak-ng. To use a real voice, record files
+  with the same names (`request_N`, `count_N`, `hint_*`, `yum_*`, …) as
+  mono WAVs.
+
+## Verification status
+
+**Verified here:**
+
+- Lua logic and `main.lua` run under Lua 5.4 against a mocked SDK. All 16
+  tests pass.
+- Every asset passes `check_assets.py`.
+- Screen layouts were checked with the draw-call renderer.
+
+**Not yet verified:**
+
+- Compiling with `pdc`. The SDK could not be downloaded in the build
+  environment.
+- Running in the Simulator or on hardware.
+- Crank feel, audio timing, and testing with real children.
+
+The renderer only approximates SDK drawing, for example the system font
+used in the A button.
+
+## Known gaps / next steps
+
+- Save progress (`playdate.datastore`) and add a parent menu (difficulty,
+  voice on/off) through the System Menu.
+- Professional voice recording, music.
+- The original v1.4 archive was not available, so this is a fresh
+  implementation of the v1.4 spec.

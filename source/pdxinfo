@@ -1,0 +1,7 @@
+name=Dino Diner
+author=dustinho
+description=Feed a hungry baby T-Rex! A gentle counting game for preschoolers: turn the crank to put strawberries in the bowl.
+bundleID=com.dustinho.dinodiner
+version=1.4
+buildNumber=14
+imagePath=launcher
