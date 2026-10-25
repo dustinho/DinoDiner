@@ -447,6 +447,32 @@ test("multiplying: levels stay in range", function()
     end
 end)
 
+test("running total badge: tray count, eaten count, then the whole amount", function()
+    local g = newGame()
+    g.taught.count = true
+    g:startRound(3)
+    step(g, { ticks = 2 })
+    run(g, 10)
+    local n, matched = g:shownTotal()
+    eq(n, 2)
+    eq(matched, false)
+    step(g, { up = true })
+    run(g, 5)
+    n, matched = g:shownTotal()
+    eq(n, 3)
+    eq(matched, true, "black when it matches")
+    step(g, { a = true })
+    check(runUntil(g, function() return g.state == "celebrate" end))
+    n, matched = g:shownTotal()
+    eq(n, 3)
+    for _, mode in ipairs(Game.MODES) do
+        local t = Layout[mode].total
+        check(t.x >= 0 and t.x + t.w <= 400 and t.y + t.h <= 240, mode .. " badge on screen")
+        local b = Layout[mode].bubble
+        check(t.x + t.w <= b.x - 8 or t.y >= b.y + b.h + 8, mode .. " badge clear of bubble")
+    end
+end)
+
 test("multiplying layout: 5x5 grid, extra row and dinos fit on screen", function()
     local g = multiplyGame()
     g:startRound(4, 5)

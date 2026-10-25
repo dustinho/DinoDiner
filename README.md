@@ -37,7 +37,9 @@ twice in a row.
    numeral.
 2. Turn the **crank forward** to add strawberries and **backward** to take
    them out. Berries fill a **2×5 grid** (a ten-frame) one at a time, with
-   a bubbly sound. Once the crank stops, the voice says the total.
+   a bubbly sound. A **total badge** above the grid always shows how many
+   are on the tray. It hops on every change and turns black when it matches
+   the request. Once the crank stops, the voice says the total.
 3. When the count matches, the dino gets excited and a pulsing **A** button
    appears. Press **A**. Berries fly into its mouth one at a time while the
    voice counts along. Then it chews and celebrates.
@@ -55,7 +57,9 @@ twice in a row.
    stegosaurus, brachiosaurus or ankylosaurus. Each row of the grid is as
    many cells wide as each dino wants.
 3. The crank fills the grid **row by row**, so the answer is built as an
-   array: 3 rows of 3. Each dino hops and smiles when its row is full.
+   array: 3 rows of 3. Each dino hops and smiles when its row is full. The
+   total badge in the top-left corner shows the running total and turns
+   black when it's right.
 4. Press **A**. Each dino eats its whole row in turn while the voice
    skip-counts (*"three, six, nine"*). Then it states the fact: *"Three
    dinos with three each makes nine!"*

@@ -47,7 +47,7 @@ for rel in re.findall(r'loadImage\("([^"]+)"\)', main):
     check_png(rel, (400, 240) if rel in ("images/title", "images/play_bg") else None)
 for pose in re.search(r'for _, pose in ipairs\(\{([^}]*)\}', main).group(1).split(","):
     check_png("images/trex_" + pose.strip().strip('"'))
-for n in range(1, 11):
+for n in range(0, 26):
     check_png("images/numbers/num_%d" % n)
 for n in range(1, 6):
     check_png("images/numbers/num_s_%d" % n)

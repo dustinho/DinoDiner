@@ -8,6 +8,7 @@ their small native sizes.
 
 Usage:  python3 tools/make_art.py            (needs Pillow + numpy)
 """
+import glob
 import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -303,20 +304,20 @@ def make_play_bg(mock):
 
 # ---------------------------------------------------------------- numerals
 def make_numbers():
-    for n in range(1, 11):
-        m = text_mask(str(n), 64)
+    """num_N: 0-25 for the request bubble and the running-total badge;
+    num_s_N: 1-5 for the multiplying bubble; times: the x sign."""
+    def ink(text, size, name):
+        m = text_mask(text, size)
         a = np.full(m.shape, CLEAR)
         a[m] = BLACK
-        save(a, os.path.join(OUT, "numbers", "num_%d.png" % n))
-    for n in range(1, 6):              # multiplying bubble: dinos x berries each
-        m = text_mask(str(n), 40)
-        a = np.full(m.shape, CLEAR)
-        a[m] = BLACK
-        save(a, os.path.join(OUT, "numbers", "num_s_%d.png" % n))
-    m = text_mask("×", 30)
-    a = np.full(m.shape, CLEAR)
-    a[m] = BLACK
-    save(a, os.path.join(OUT, "numbers", "times.png"))
+        save(a, os.path.join(OUT, "numbers", name + ".png"))
+    for f in glob.glob(os.path.join(OUT, "numbers", "*.png")):
+        os.remove(f)
+    for n in range(0, 26):
+        ink(str(n), 46, "num_%d" % n)
+    for n in range(1, 6):
+        ink(str(n), 36, "num_s_%d" % n)
+    ink("×", 26, "times")
 
 
 # ---------------------------------------------------------------- hearts

@@ -54,15 +54,17 @@ Layout = {
     count = {
         dino = { x = 2, y = 92 },
         mouth = { x = 136, y = 152 },
-        bubble = { x = 196, y = 10, w = 164, h = 92, tip = { 202, 120 } },
-        prompt = { x = 283, y = 124 },          -- crank / A-button nudge icon
+        bubble = { x = 230, y = 8, w = 128, h = 56, tip = { 212, 92 } },
+        total = { x = 284, y = 96, w = 92, h = 44 },   -- running-total badge
+        prompt = { x = 254, y = 118 },          -- crank / A-button nudge icon
         grid = { x = 198, y = 150, cols = 5, dx = 34, dy = 36 },
     },
     multiply = {
         dino = { x = -26, y = 92 },
         mouth = { x = 110, y = 152 },
-        bubble = { x = 186, y = 4, w = 176, h = 50, tip = { 158, 74 } },
-        prompt = { x = 150, y = 34 },
+        bubble = { x = 186, y = 6, w = 176, h = 46, tip = { 172, 70 } },
+        total = { x = 6, y = 8, w = 92, h = 44 },      -- scoreboard corner
+        prompt = { x = 120, y = 76 },
         grid = { x = 226, y = 64, dx = 34, dy = 35 },
         portraitX = 175,
     },
@@ -359,6 +361,7 @@ function Game:updatePlay(input)
             self.audio:sfx("remove")
         end
         self.stepTimer = Game.STEP_FRAMES
+        self.changed = self.frame
         self.settle = 0
         self.readyNudged = false
         if self.hint then self.curious, self.hint = 0, nil end
@@ -456,6 +459,7 @@ function Game:updateFeeding()
     end
     if landed > 0 then
         self.eaten = self.eaten + landed
+        self.changed = self.frame
         self.chewing = 8
         self.audio:sfx("chomp")
         if self.mode == "multiply" then
@@ -551,6 +555,15 @@ function Game:friendPose(r)
         return "idle"
     end
     return self.count >= r * self.each and "happy" or "idle"
+end
+
+-- The running total shown in the badge: berries on the tray while playing,
+-- berries eaten while feeding (it counts up with the voice), then the
+-- whole amount.  `matched` turns the badge black: total == request.
+function Game:shownTotal()
+    if self.state == "feeding" then return self.eaten, false end
+    if self.state == "celebrate" then return self.target, true end
+    return self.count, self.count == self.target and self.pending == 0
 end
 
 -- Gentle blinking after a wrong answer: true on the "off" half of a blink.

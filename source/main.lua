@@ -38,7 +38,7 @@ local img = {
 for _, pose in ipairs({ "idle", "blink", "excited", "curious", "chomp", "chew", "happy" }) do
     img.trex[pose] = loadImage("images/trex_" .. pose)
 end
-for n = 1, 10 do
+for n = 0, 25 do
     img.num[n] = loadImage("images/numbers/num_" .. n)
 end
 for n = 1, 5 do
@@ -148,17 +148,38 @@ local function drawBubble(g, icon, invert)
     local cy = b.y + b.h // 2
     if g.mode == "count" then
         local cw, ch = icon:getSize()
-        icon:draw(b.x + 16, cy - ch // 2)
-        local left = b.x + 16 + cw
+        icon:draw(b.x + 12, cy - ch // 2)
+        local left = b.x + 12 + cw
         drawInk(img.num[g.target], (left + b.x + b.w) // 2, cy, invert)
     else
-        local x = b.x + 8
-        drawCentered(img.friends.trex.idle, x + 22, cy)
-        drawInk(img.numSmall[g.groups], x + 60, cy, invert)
-        drawInk(img.times, x + 86, cy, invert)
-        drawCentered(icon, x + 116, cy)
-        drawInk(img.numSmall[g.each], x + 152, cy, invert)
+        local x = b.x + 6
+        drawCentered(img.friends.trex.idle, x + 24, cy)
+        drawInk(img.numSmall[g.groups], x + 62, cy, invert)
+        drawInk(img.times, x + 84, cy, invert)
+        drawCentered(icon, x + 112, cy)
+        drawInk(img.numSmall[g.each], x + 146, cy, invert)
     end
+end
+
+-- Running total: how many berries are on the tray right now.  It hops
+-- when the total changes and turns black when it matches the request.
+local function drawTotal(g)
+    local t = g:layout().total
+    local n, matched = g:shownTotal()
+    local y = t.y
+    if g.changed and g.frame - g.changed < 4 then y = y - (4 - (g.frame - g.changed)) end
+    gfx.setColor(matched and gfx.kColorBlack or gfx.kColorWhite)
+    gfx.fillRoundRect(t.x, y, t.w, t.h, 8)
+    gfx.setColor(gfx.kColorBlack)
+    gfx.setLineWidth(3)
+    gfx.drawRoundRect(t.x, y, t.w, t.h, 8)
+    gfx.setLineWidth(1)
+    local mw, mh = img.berryMini:getSize()
+    if matched then gfx.setImageDrawMode(gfx.kDrawModeInverted) end
+    img.berryMini:draw(t.x + 7, y + (t.h - mh) // 2)
+    gfx.setImageDrawMode(gfx.kDrawModeCopy)
+    local left = t.x + 7 + mw
+    drawInk(img.num[math.min(n, 25)], (left + t.x + t.w) // 2, y + t.h // 2, matched)
 end
 
 ---------------------------------------------------------------- grid
@@ -285,6 +306,7 @@ local function drawPlay(g)
     end
     drawTray(g)
     drawBerries(g)
+    drawTotal(g)
     drawDino(g)
     drawFriends(g)
     for _, f in ipairs(g:flyingBerries()) do

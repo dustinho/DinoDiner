@@ -20,6 +20,15 @@ Simulator.
 | 6 | Grid cells shared edges, so the dotted outlines looked broken. | Each cell is inset by 1 px. |
 | 7 | The empty-tray hint still said "My bowl is empty". | "No strawberries yet!" |
 
+### Layout pass: smaller numbers, visible total
+
+| # | Finding | Fix |
+|---|---|---|
+| 8 | The request bubble (164×92, 46 px numerals) took almost a quarter of the screen. | Bubble is 128×56 with 34 px numerals. The multiplying bubble is 176×46. |
+| 9 | Nothing showed the current total, so a child had to count berries to compare with the request. | New **total badge**: [berry] N. It hops on every change, turns black when it matches, counts up with the voice while eating, then shows the whole amount. |
+| 10 | In Multiplying, a badge next to "3 × 4" read like part of the equation. | Badge moved to the top-left corner, like a scoreboard, well clear of the bubble. |
+| 11 | Two-digit totals ("10", "25") overflowed the badge. | Badge widened to 92 px. A test checks both badges stay on screen and clear of the bubble. |
+
 ### Still open
 
 - **Big T-Rex vs. grid in Multiplying:** the host takes the left 40% of
